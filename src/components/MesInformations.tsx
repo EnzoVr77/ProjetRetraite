@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Check } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 interface Enfant {
     prenom: string;
@@ -18,26 +18,23 @@ export default function MesInformations() {
         adopte: false,
         ageAdoption: undefined,
     });
-    const [editionIndex, setEditionIndex] = useState<number | null>(null);
 
-    const ajouterOuModifierEnfant = () => {
+    /** ➕ Ajouter ou mettre à jour un enfant */
+    const ajouterEnfant = () => {
         if (!nouvelEnfant.prenom || !nouvelEnfant.nom || !nouvelEnfant.dateNaissance) return;
-        if (editionIndex !== null) {
-            const updated = [...enfants];
-            updated[editionIndex] = nouvelEnfant;
-            setEnfants(updated);
-            setEditionIndex(null);
-        } else {
-            setEnfants([...enfants, nouvelEnfant]);
-        }
+
+        setEnfants([...enfants, nouvelEnfant]);
         setNouvelEnfant({ prenom: "", nom: "", dateNaissance: "", adopte: false });
     };
 
+    /** 🖊️ Modifier un enfant (le supprime et remet ses infos dans le formulaire) */
     const modifierEnfant = (index: number) => {
-        setNouvelEnfant(enfants[index]);
-        setEditionIndex(index);
+        const enfant = enfants[index];
+        setNouvelEnfant(enfant);
+        setEnfants(enfants.filter((_, i) => i !== index));
     };
 
+    /** 🗑️ Supprimer un enfant */
     const supprimerEnfant = (index: number) => {
         setEnfants(enfants.filter((_, i) => i !== index));
     };
@@ -45,12 +42,12 @@ export default function MesInformations() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center pt-24 p-6">
             <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-4xl space-y-10">
+
                 {/* -------------------- 👶 Enfants -------------------- */}
                 <section>
                     <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">👶 Enfants</h2>
 
                     <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
-                        {/* Liste des enfants */}
                         {enfants.length === 0 ? (
                             <p className="text-gray-600 text-center">Aucun enfant enregistré.</p>
                         ) : (
@@ -65,23 +62,25 @@ export default function MesInformations() {
                                                 {e.prenom} {e.nom}
                                             </p>
                                             <p className="text-sm text-gray-600">
-                                                <span className="font-medium">Date de naissance :</span> {e.dateNaissance}
+                                                <span className="font-medium">Date de naissance :</span>{" "}
+                                                {e.dateNaissance}
+                                                <br />
                                                 {e.adopte && (
-                                                    <>
-                                                        <br />
-                                                        <span className="font-medium">Adopté(e) à :</span> {e.ageAdoption} ans
-                                                    </>
+                                                    <span>
+                            <span className="font-medium">Adopté(e) à :</span>{" "}
+                                                        {e.ageAdoption} ans
+                          </span>
                                                 )}
                                             </p>
                                         </div>
-                                        <div className="flex space-x-3 mt-3 md:mt-0">
+                                        <div className="flex items-center space-x-3 mt-2 md:mt-0">
                                             <Pencil
-                                                className="text-purple-600 cursor-pointer hover:text-purple-800 transition"
+                                                className="text-purple-600 cursor-pointer"
                                                 size={20}
                                                 onClick={() => modifierEnfant(i)}
                                             />
                                             <Trash2
-                                                className="text-red-500 cursor-pointer hover:text-red-700 transition"
+                                                className="text-red-500 cursor-pointer"
                                                 size={20}
                                                 onClick={() => supprimerEnfant(i)}
                                             />
@@ -91,15 +90,17 @@ export default function MesInformations() {
                             </ul>
                         )}
 
-                        {/* Formulaire ajout/modif enfant */}
+                        {/* Formulaire ajout enfant */}
                         <div className="border-t pt-4 mt-4 space-y-3">
                             <h3 className="font-semibold mb-2 text-gray-700 text-center">
-                                {editionIndex !== null ? "Modifier un enfant" : "Ajouter un enfant"}
+                                Ajouter / Modifier un enfant
                             </h3>
-
                             <div className="grid md:grid-cols-4 gap-4 items-end">
+                                {/* Prénom */}
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                                    <label className="text-sm font-medium text-gray-700 mb-1">
+                                        Prénom
+                                    </label>
                                     <input
                                         type="text"
                                         placeholder="Prénom"
@@ -111,8 +112,11 @@ export default function MesInformations() {
                                     />
                                 </div>
 
+                                {/* Nom */}
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-medium text-gray-700 mb-1">Nom</label>
+                                    <label className="text-sm font-medium text-gray-700 mb-1">
+                                        Nom
+                                    </label>
                                     <input
                                         type="text"
                                         placeholder="Nom"
@@ -124,8 +128,11 @@ export default function MesInformations() {
                                     />
                                 </div>
 
+                                {/* Date de naissance */}
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
+                                    <label className="text-sm font-medium text-gray-700 mb-1">
+                                        Date de naissance
+                                    </label>
                                     <input
                                         type="date"
                                         value={nouvelEnfant.dateNaissance}
@@ -139,14 +146,20 @@ export default function MesInformations() {
                                     />
                                 </div>
 
-                                <div className="flex flex-col justify-center">
-                                    <label className="text-sm font-medium text-gray-700 mb-1">Adopté</label>
-                                    <div className="flex items-center space-x-3">
+                                {/* Adoption */}
+                                <div className="flex flex-col justify-end">
+                                    <label className="text-sm font-medium text-gray-700 mb-1">
+                                        Adopté
+                                    </label>
+                                    <div className="flex items-center space-x-3 h-[42px]">
                                         <input
                                             type="checkbox"
                                             checked={nouvelEnfant.adopte}
                                             onChange={(e) =>
-                                                setNouvelEnfant({ ...nouvelEnfant, adopte: e.target.checked })
+                                                setNouvelEnfant({
+                                                    ...nouvelEnfant,
+                                                    adopte: e.target.checked,
+                                                })
                                             }
                                             className="w-5 h-5 accent-purple-600"
                                         />
@@ -159,7 +172,8 @@ export default function MesInformations() {
                                                 onChange={(e) =>
                                                     setNouvelEnfant({
                                                         ...nouvelEnfant,
-                                                        ageAdoption: parseInt(e.target.value) || undefined,
+                                                        ageAdoption:
+                                                            parseInt(e.target.value) || undefined,
                                                     })
                                                 }
                                             />
@@ -169,18 +183,11 @@ export default function MesInformations() {
                             </div>
 
                             <button
-                                onClick={ajouterOuModifierEnfant}
-                                className="mt-5 w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                                onClick={ajouterEnfant}
+                                className="mt-4 w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
                             >
-                                {editionIndex !== null ? (
-                                    <>
-                                        <Check size={18} className="mr-2" /> Enregistrer les modifications
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus size={18} className="mr-2" /> Ajouter un enfant
-                                    </>
-                                )}
+                                <Plus size={18} className="mr-2" />{" "}
+                                {nouvelEnfant.prenom ? "Enregistrer l'enfant" : "Ajouter un enfant"}
                             </button>
                         </div>
                     </div>
@@ -188,7 +195,9 @@ export default function MesInformations() {
 
                 {/* -------------------- 💼 Carrière -------------------- */}
                 <section>
-                    <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">💼 Carrière</h2>
+                    <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+                        💼 Carrière
+                    </h2>
                     <div className="bg-gray-50 p-6 rounded-2xl shadow-inner text-center text-gray-600">
                         Bientôt : saisissez vos années de travail, régimes, et salaires.
                     </div>
@@ -201,7 +210,9 @@ export default function MesInformations() {
                     </h2>
                     <div className="bg-gray-50 p-6 rounded-2xl shadow-inner grid md:grid-cols-2 gap-4">
                         <div className="flex flex-col">
-                            <label className="text-sm font-medium text-gray-700 mb-1">Sexe</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1">
+                                Sexe
+                            </label>
                             <select className="border rounded-lg p-2 text-center">
                                 <option>Femme</option>
                                 <option>Homme</option>
@@ -209,7 +220,9 @@ export default function MesInformations() {
                             </select>
                         </div>
                         <div className="flex flex-col">
-                            <label className="text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
+                            <label className="text-sm font-medium text-gray-700 mb-1">
+                                Date de naissance
+                            </label>
                             <input
                                 type="date"
                                 className="border rounded-lg p-2 text-center"
