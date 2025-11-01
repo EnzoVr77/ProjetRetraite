@@ -9,6 +9,14 @@ interface Enfant {
     ageAdoption?: number;
 }
 
+interface Periode {
+    id: number;
+    debut: string;
+    fin: string;
+    trimestres: number;
+    salaire: number;
+}
+
 type Onglet = "infos" | "enfants" | "carriere";
 
 export default function MesInformations() {
@@ -28,14 +36,40 @@ export default function MesInformations() {
         ageAdoption: undefined,
     });
 
+    // 💼 Carrière
+    const [firstYear, setFirstYear] = useState("");
+    const [retirementAge, setRetirementAge] = useState("");
+    const [retirementAgePossible, setRetirementAgePossible] = useState("");
+    const [periodes, setPeriodes] = useState<Periode[]>([]);
+    const [boolReprise, setBoolReprise] = useState(false);
+    const [travailChezLeMemeEmployeur, setTravailChezLeMemeEmployeur] = useState(false);
+    const [moisDepuisDepartMemeEmployeur, setMoisDepuisDepartMemeEmployeur] = useState(0);
+    const [salaireDuCumulTravailRetraite, setSalaireDuCumulTravailRetraite] = useState(0);
+    const [salaireMois1, setSalaireMois1] = useState(0);
+    const [salaireMois2, setSalaireMois2] = useState(0);
+    const [salaireMois3, setSalaireMois3] = useState(0);
+    const [boolObtRetrObli, setBoolObtRetrObli] = useState(false);
+
     // 💾 Charger depuis le localStorage au démarrage
     useEffect(() => {
         const data = localStorage.getItem("mesInfos");
         if (data) {
-            const { sexe, dateNaissance, enfants } = JSON.parse(data);
-            if (sexe) setSexe(sexe);
-            if (dateNaissance) setDateNaissance(dateNaissance);
-            if (enfants) setEnfants(enfants);
+            const parsed = JSON.parse(data);
+            if (parsed.sexe) setSexe(parsed.sexe);
+            if (parsed.dateNaissance) setDateNaissance(parsed.dateNaissance);
+            if (parsed.enfants) setEnfants(parsed.enfants);
+            if (parsed.firstYear) setFirstYear(parsed.firstYear);
+            if (parsed.retirementAge) setRetirementAge(parsed.retirementAge);
+            if (parsed.retirementAgePossible) setRetirementAgePossible(parsed.retirementAgePossible);
+            if (parsed.periodes) setPeriodes(parsed.periodes);
+            if (parsed.boolReprise) setBoolReprise(parsed.boolReprise);
+            if (parsed.travailChezLeMemeEmployeur) setTravailChezLeMemeEmployeur(parsed.travailChezLeMemeEmployeur);
+            if (parsed.moisDepuisDepartMemeEmployeur) setMoisDepuisDepartMemeEmployeur(parsed.moisDepuisDepartMemeEmployeur);
+            if (parsed.salaireDuCumulTravailRetraite) setSalaireDuCumulTravailRetraite(parsed.salaireDuCumulTravailRetraite);
+            if (parsed.salaireMois1) setSalaireMois1(parsed.salaireMois1);
+            if (parsed.salaireMois2) setSalaireMois2(parsed.salaireMois2);
+            if (parsed.salaireMois3) setSalaireMois3(parsed.salaireMois3);
+            if (parsed.boolObtRetrObli) setBoolObtRetrObli(parsed.boolObtRetrObli);
         }
     }, []);
 
@@ -56,12 +90,47 @@ export default function MesInformations() {
         setEnfants(enfants.filter((_, i) => i !== index));
     };
 
-    // ✅ Sauvegarde (persistance)
+    // Périodes carrière
+    const ajouterPeriode = (idSuivant?: number) => {
+        const newId = idSuivant ? idSuivant + 1 : periodes.length + 1;
+        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }]);
+    };
+
+    const updatePeriode = (id: number, data: Partial<Periode>) => {
+        setPeriodes(periodes.map(p => p.id === id ? { ...p, ...data } : p));
+    };
+
+    const supprimerPeriode = (id: number) => {
+        setPeriodes(periodes.filter(p => p.id !== id));
+    };
+
+    // ✅ Sauvegarde globale
     const validerDonnees = () => {
-        const data = { sexe, dateNaissance, enfants };
+        const data = {
+            sexe,
+            dateNaissance,
+            enfants,
+            firstYear,
+            retirementAge,
+            retirementAgePossible,
+            periodes,
+            boolReprise,
+            travailChezLeMemeEmployeur,
+            moisDepuisDepartMemeEmployeur,
+            salaireDuCumulTravailRetraite,
+            salaireMois1,
+            salaireMois2,
+            salaireMois3,
+            boolObtRetrObli,
+        };
         localStorage.setItem("mesInfos", JSON.stringify(data));
         alert("✅ Données enregistrées avec succès !");
     };
+
+    const validerEtSauvegarder = () => {
+        validerDonnees();
+    };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center pt-24 p-6">
@@ -322,8 +391,188 @@ export default function MesInformations() {
                         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
                             💼 Carrière
                         </h2>
-                        <div className="bg-gray-50 p-6 rounded-2xl shadow-inner text-center text-gray-600">
-                            Bientôt : saisissez vos années de travail, régimes, et salaires.
+
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
+                            {/* Année de début et date de départ souhaitée */}
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div className="flex flex-col">
+                                    <label className="text-sm font-medium text-gray-700 mb-1">Année de début d'activité</label>
+                                    <input
+                                        type="date"
+                                        value={firstYear}
+                                        onChange={(e) => setFirstYear(e.target.value)}
+                                        className="border rounded-lg p-2 text-center"
+                                    />
+                                </div>
+                                <div className="flex flex-col">
+                                    <label className="text-sm font-medium text-gray-700 mb-1">Date de départ souhaitée</label>
+                                    <input
+                                        type="date"
+                                        value={retirementAge}
+                                        onChange={(e) => setRetirementAge(e.target.value)}
+                                        className="border rounded-lg p-2 text-center"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Date de départ possible */}
+                            <div className="flex flex-col md:flex-row md:items-center gap-2">
+                                <label className="text-sm font-medium text-gray-700">Date de départ possible (carrière longue)</label>
+                                <input
+                                    type="date"
+                                    value={retirementAgePossible}
+                                    onChange={(e) => setRetirementAgePossible(e.target.value)}
+                                    className="border rounded-lg p-2"
+                                />
+                            </div>
+
+                            {/* Périodes dynamiques */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-semibold">Périodes de travail (années)</h3>
+                                    <button
+                                        onClick={() => ajouterPeriode()}
+                                        className="inline-flex items-center gap-2 bg-purple-600 text-white px-3 py-1 rounded-md"
+                                    >
+                                        <Plus size={14} /> Ajouter année
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {periodes.map((p) => (
+                                        <div
+                                            key={p.id}
+                                            className="bg-white p-3 rounded-xl shadow flex flex-col md:flex-row md:items-center gap-3"
+                                        >
+                                            <div className="flex-1 grid md:grid-cols-3 gap-2">
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs text-gray-600">Début</label>
+                                                    <input
+                                                        type="date"
+                                                        value={p.debut}
+                                                        onChange={(e) => updatePeriode(p.id, { debut: e.target.value })}
+                                                        className="p-2 border rounded"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs text-gray-600">Fin</label>
+                                                    <input
+                                                        type="date"
+                                                        value={p.fin}
+                                                        onChange={(e) => updatePeriode(p.id, { fin: e.target.value })}
+                                                        className="p-2 border rounded"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-xs text-gray-600">Trimestres</label>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        max={4}
+                                                        value={p.trimestres}
+                                                        onChange={(e) => updatePeriode(p.id, { trimestres: Number(e.target.value) || 0 })}
+                                                        className="p-2 border rounded text-center"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex md:flex-col items-center gap-2">
+                                                <button
+                                                    onClick={() => ajouterPeriode(p.id)}
+                                                    className="px-3 py-1 bg-gray-100 rounded"
+                                                >
+                                                    + Ajouter Une Année
+                                                </button>
+                                                <button
+                                                    onClick={() => supprimerPeriode(p.id)}
+                                                    className="px-3 py-1 bg-red-50 text-red-600 rounded flex items-center gap-2"
+                                                >
+                                                    <Trash2 size={14} /> Suppr
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Reprise activité & cumul */}
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        id="boolReprise"
+                                        type="checkbox"
+                                        checked={boolReprise}
+                                        onChange={(e) => setBoolReprise(e.target.checked)}
+                                        className="w-5 h-5 accent-purple-600"
+                                    />
+                                    <label htmlFor="boolReprise" className="text-gray-700">
+                                        Souhaitez-vous reprendre une activité après départ ?
+                                    </label>
+                                </div>
+
+                                {boolReprise && (
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="flex items-center">
+                                            <input
+                                                id="sameEmployer"
+                                                type="checkbox"
+                                                checked={travailChezLeMemeEmployeur}
+                                                onChange={(e) => setTravailChezLeMemeEmployeur(e.target.checked)}
+                                                className="w-5 h-5 accent-purple-600 mr-2"
+                                            />
+                                            <label htmlFor="sameEmployer">Chez le même employeur ?</label>
+                                        </div>
+
+                                        {travailChezLeMemeEmployeur && (
+                                            <div className="flex flex-col">
+                                                <label className="text-xs text-gray-600">Mois depuis départ (même employeur)</label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={moisDepuisDepartMemeEmployeur}
+                                                    onChange={(e) => setMoisDepuisDepartMemeEmployeur(Number(e.target.value) || 0)}
+                                                    className="p-2 border rounded w-40"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="flex flex-col">
+                                            <label className="text-xs text-gray-600">Salaire cumul travail/retraite (estimation)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={salaireDuCumulTravailRetraite}
+                                                onChange={(e) => setSalaireDuCumulTravailRetraite(Number(e.target.value) || 0)}
+                                                className="p-2 border rounded"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Obtention retraites obligatoires */}
+                            <div className="flex items-center gap-3">
+                                <input
+                                    id="boolObtRetrObli"
+                                    type="checkbox"
+                                    checked={boolObtRetrObli}
+                                    onChange={(e) => setBoolObtRetrObli(e.target.checked)}
+                                    className="w-5 h-5 accent-purple-600"
+                                />
+                                <label htmlFor="boolObtRetrObli" className="text-gray-700">
+                                    J'ai liquidé toutes mes retraites obligatoires
+                                </label>
+                            </div>
+
+                            {/* Bouton de sauvegarde */}
+                            <div className="pt-4 text-center">
+                                <button
+                                    onClick={validerEtSauvegarder}
+                                    className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition"
+                                >
+                                    ✅ Valider et enregistrer (localStorage)
+                                </button>
+                            </div>
                         </div>
                     </section>
                 )}
