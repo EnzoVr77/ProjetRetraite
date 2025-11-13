@@ -245,7 +245,7 @@ export default function MesInformations() {
                                     <button onClick={ajouterEnfant} className="w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                                         <Plus size={18} className="mr-2"/> Ajouter / Enregistrer
                                     </button>
-                                    <button onClick={validerDonnees} className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                                    <button onClick={validerEtAllerProfil} className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
                                         ✅ Sauvegarder les enfants
                                     </button>
                                 </div>
@@ -305,7 +305,7 @@ export default function MesInformations() {
                             </div>
 
                             <div className="pt-4 text-center">
-                                <button onClick={validerDonnees} className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition">✅ Sauvegarder</button>
+                                <button onClick={validerEtAllerProfil} className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition">✅ Sauvegarder</button>
                             </div>
                         </div>
                     </section>
