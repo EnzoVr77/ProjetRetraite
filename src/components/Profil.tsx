@@ -1,15 +1,31 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+interface User {
+    nom?: string;
+    prenom?: string;
+    dateNaissance?: string;
+    statut?: string;
+    handicape?: boolean;
+}
 
 export default function Profil() {
     const navigate = useNavigate();
+    const [user, setUser] = useState<User>({});
 
-    const user = {
-        nom: "Dupont",
-        prenom: "Jean",
-        email: "jean.dupont@example.com",
-        dateNaissance: "15/06/1964",
-        statut: "Retraité",
-    };
+    useEffect(() => {
+        const data = localStorage.getItem("mesInfos");
+        if (data) {
+            const parsed = JSON.parse(data);
+            setUser({
+                nom: parsed.nom || "",
+                prenom: parsed.prenom || "",
+                dateNaissance: parsed.dateNaissance || "",
+                statut: "Retraité", // par défaut si tu veux
+                handicape: parsed.handicape || false,
+            });
+        }
+    }, []);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 pt-24 p-6 flex flex-col items-center">
@@ -25,9 +41,9 @@ export default function Profil() {
                     <div className="grid md:grid-cols-2 gap-4">
                         <p><strong>Nom :</strong> {user.nom}</p>
                         <p><strong>Prénom :</strong> {user.prenom}</p>
-                        <p><strong>Email :</strong> {user.email}</p>
                         <p><strong>Date de naissance :</strong> {user.dateNaissance}</p>
                         <p><strong>Statut :</strong> {user.statut}</p>
+                        {user.handicape && <p><strong>Handicap :</strong> Travailleur handicapé ✅</p>}
                     </div>
                 </section>
 
