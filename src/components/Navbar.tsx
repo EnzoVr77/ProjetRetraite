@@ -12,8 +12,8 @@ export default function Navbar() {
                             R
                         </div>
                         <span className="font-bold text-lg text-gray-800 tracking-tight">
-              Retraite+
-            </span>
+                            Retraite+
+                        </span>
                     </div>
 
                     {/* Accueil */}
@@ -22,6 +22,14 @@ export default function Navbar() {
                         className="text-gray-800 text-sm font-semibold hover:text-purple-600 transition-colors"
                     >
                         Accueil
+                    </Link>
+
+                    {/* MaRetraite */}
+                    <Link
+                        to="/ma-retraite"
+                        className="text-gray-800 text-sm font-semibold hover:text-purple-600 transition-colors"
+                    >
+                        Ma Retraite
                     </Link>
                 </div>
 

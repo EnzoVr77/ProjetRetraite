@@ -1,69 +1,104 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import FormulaireRetraite from "./components/FormulaireRetraites.tsx";
-import ResultatRetraite from "./components/ResultatRetraite";
-import DetailsCalcul from "./components/DetailsCalcul";
-import MesInformations from "./components/MesInformations";
 import Profil from "./components/Profil";
-import { calculerRetraite } from "./utils/calculRetraite";
-import { useState } from "react";
+import MesInformations from "./components/MesInformations";
+import MaRetraite from "./components/MaRetraite";
 
+// -------------------------
+// Page d'accueil / Simulateur
+// -------------------------
 function Simulateur() {
-    const [valeurs, setValeurs] = useState({
-        anneeNaissance: 1964,
-        ageDepart: 64,
-        sam: 26000,
-        trimestresAcquis: 169,
-        handicape: true
-    });
-
-    const [afficherDetails, setAfficherDetails] = useState(false);
-    const resultat = calculerRetraite(valeurs);
-
-    function handleChange(nom: string, valeur: unknown) {
-        setValeurs({ ...valeurs, [nom]: valeur });
-    }
+    // 🔹 Pour l'instant : profil incomplet en brut
+    const profilComplet = false; // tu pourras remplacer par une vraie vérif
+    const infosManquantes = ["Nom", "Prénom", "Date de naissance", "Trimestres acquis"];
 
     return (
-        <div className="pt-8 min-h-screen flex flex-col items-center bg-gradient-to-br from-blue-50 to-blue-100">
-            <div className="bg-white shadow-2xl rounded-[2rem] p-10 w-full max-w-6xl space-y-8">
-                {/* Titres principaux centrés */}
-                <div className="flex justify-between mb-8">
-                    <h2 className="text-2xl font-bold text-gray-800 text-center w-1/2 border-b-4 border-blue-600 pb-2">
-                        🧾 Formulaire
-                    </h2>
-                    <h2 className="text-2xl font-bold text-gray-800 text-center w-1/2 border-b-4 border-purple-600 pb-2">
-                        📊 Résultats & Calculs
-                    </h2>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center pt-24 p-6">
+            <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-4xl space-y-6 text-center">
+
+                <h1 className="text-3xl font-bold text-gray-800">Bienvenue sur Retraite+</h1>
+
+                {!profilComplet ? (
+                    <div className="p-4 bg-yellow-100 text-yellow-800 rounded-lg">
+                        ⚠️ Votre profil est incomplet. Veuillez compléter les informations suivantes pour calculer votre retraite :
+                        <ul className="list-disc list-inside mt-2 text-left">
+                            {infosManquantes.map((info, i) => (
+                                <li key={i}>{info}</li>
+                            ))}
+                        </ul>
+                        <div className="mt-4">
+                            <Link
+                                to="/profil"
+                                className="text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                            >
+                                Compléter mon profil
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-4 bg-green-100 text-green-800 rounded-lg">
+                        ✅ Votre profil est complet. Vous pouvez maintenant calculer votre retraite.
+                        <div className="mt-4">
+                            <Link
+                                to="/ma-retraite"
+                                className="text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                            >
+                                Voir ma retraite
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                <p className="text-gray-500 mt-6">
+                    Retraite+ vous aide à estimer votre pension en fonction de vos informations personnelles et carrière.
+                </p>
+
+                {/* ----------------- Bloc Actualités ----------------- */}
+                <div className="bg-white shadow-md rounded-xl p-6 mt-8 space-y-4">
+                    <h2 className="text-2xl font-bold text-gray-800">Actualités Retraite</h2>
+                    <ul className="space-y-2">
+                        {[
+                            "PASS 2025 mis à jour à 47 100 € / an",
+                            "Réforme retraite : départ anticipé travailleurs handicapés",
+                            "Surcote : +1,25 % par trimestre supplémentaire au-delà du taux plein"
+                        ].map((actu, index) => (
+                            <li key={index} className="flex items-start space-x-2">
+                                <span className="text-blue-500 font-bold">🔹</span>
+                                <span className="text-gray-700">{actu}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
 
-                {/* Deux colonnes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    {/* Colonne gauche : formulaire */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-inner">
-                        <FormulaireRetraite valeurs={valeurs} onChange={handleChange} />
-                    </div>
-
-                    {/* Colonne droite : résultats + détails */}
-                    <div className="flex flex-col items-center space-y-6">
-                        <div className="bg-white rounded-xl p-6 shadow-md w-full text-center">
-                            <ResultatRetraite resultat={resultat} />
-                        </div>
-
-                        <div className="bg-gray-50 rounded-xl p-6 shadow-inner w-full text-center">
-                            <DetailsCalcul
-                                resultat={resultat}
-                                visible={afficherDetails}
-                                onToggle={() => setAfficherDetails(!afficherDetails)}
-                            />
-                        </div>
-                    </div>
+                {/* ----------------- Liens rapides ----------------- */}
+                <div className="bg-white shadow-inner rounded-xl p-6 flex flex-col md:flex-row justify-around items-center gap-4 mt-6">
+                    <Link
+                        to="/profil"
+                        className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition w-full md:w-auto text-center"
+                    >
+                        Mon profil
+                    </Link>
+                    <Link
+                        to="/ma-retraite"
+                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition w-full md:w-auto text-center"
+                    >
+                        Calculer ma retraite
+                    </Link>
+                    <Link
+                        to="/mes-informations"
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition w-full md:w-auto text-center"
+                    >
+                        Mes informations
+                    </Link>
                 </div>
             </div>
         </div>
     );
 }
 
+// -------------------------
+// App principal
+// -------------------------
 export default function App() {
     return (
         <Router>
@@ -72,6 +107,7 @@ export default function App() {
                 <Route path="/" element={<Simulateur />} />
                 <Route path="/profil" element={<Profil />} />
                 <Route path="/mes-informations" element={<MesInformations />} />
+                <Route path="/ma-retraite" element={<MaRetraite />} />
             </Routes>
         </Router>
     );
