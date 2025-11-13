@@ -216,14 +216,40 @@ export default function MesInformations() {
                                     <input type="text" placeholder="Prénom" value={nouvelEnfant.prenom} onChange={e => setNouvelEnfant({...nouvelEnfant, prenom:e.target.value})} className="p-2 border rounded-lg"/>
                                     <input type="text" placeholder="Nom" value={nouvelEnfant.nom} onChange={e => setNouvelEnfant({...nouvelEnfant, nom:e.target.value})} className="p-2 border rounded-lg"/>
                                     <input type="date" value={nouvelEnfant.dateNaissance} onChange={e => setNouvelEnfant({...nouvelEnfant, dateNaissance:e.target.value})} className="p-2 border rounded-lg"/>
-                                    <div className="flex items-center space-x-2">
-                                        <input type="checkbox" checked={nouvelEnfant.adopte} onChange={e=>setNouvelEnfant({...nouvelEnfant, adopte:e.target.checked})} className="w-5 h-5 accent-purple-600"/>
-                                        {nouvelEnfant.adopte && <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e=>setNouvelEnfant({...nouvelEnfant, ageAdoption:parseInt(e.target.value)||undefined})} className="p-2 border rounded-lg w-28"/>}
+
+                                    {/* Texte "Adopté" au-dessus de la checkbox */}
+                                    <div className="flex flex-col">
+                                        <p className="text-sm text-gray-600 mb-1">Adopté</p>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={nouvelEnfant.adopte}
+                                                onChange={e=>setNouvelEnfant({...nouvelEnfant, adopte:e.target.checked})}
+                                                className="w-5 h-5 accent-purple-600"
+                                            />
+                                            {nouvelEnfant.adopte && (
+                                                <input
+                                                    type="number"
+                                                    placeholder="Âge adoption"
+                                                    value={nouvelEnfant.ageAdoption || ""}
+                                                    onChange={e=>setNouvelEnfant({...nouvelEnfant, ageAdoption:parseInt(e.target.value)||undefined})}
+                                                    className="p-2 border rounded-lg w-28"
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <button onClick={ajouterEnfant} className="mt-4 w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
-                                    <Plus size={18} className="mr-2"/> Ajouter / Enregistrer
-                                </button>
+
+                                {/* --- Boutons --- */}
+                                <div className="flex flex-col gap-3 mt-3">
+                                    <button onClick={ajouterEnfant} className="w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                                        <Plus size={18} className="mr-2"/> Ajouter / Enregistrer
+                                    </button>
+                                    <button onClick={validerDonnees} className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                                        ✅ Sauvegarder les enfants
+                                    </button>
+                                </div>
+
                             </div>
                         </div>
                     </section>
