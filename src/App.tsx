@@ -14,6 +14,7 @@ function Simulateur() {
         ageDepart: 64,
         sam: 26000,
         trimestresAcquis: 169,
+        handicape: true
     });
 
     const [afficherDetails, setAfficherDetails] = useState(false);

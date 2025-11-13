@@ -12,6 +12,7 @@ export default function ResultatRetraite({ resultat }: Props) {
         ageLegal,
         trimestresRequis,
         surcoteTrimestres,
+        handicape,
     } = resultat;
 
     let message = "";
@@ -39,7 +40,10 @@ export default function ResultatRetraite({ resultat }: Props) {
 
             <div className="text-sm text-gray-600 mb-2">
                 (Brut : {pensionMensuelleBrute.toFixed(2)} € / mois — Âge légal : {ageLegal} ans —{" "}
-                Trimestres requis : {trimestresRequis})
+                Trimestres requis : {trimestresRequis}
+                {handicape != null && handicape
+                    ? " — Travailleur handicapé"
+                    : ""})
             </div>
 
             <div className="text-xs text-gray-500">

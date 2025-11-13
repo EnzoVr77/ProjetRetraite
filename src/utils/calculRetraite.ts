@@ -4,6 +4,7 @@
 // - Cap à 50 % du PASS, puis ajout éventuel de la surcote
 // - Trimestres requis automatiques (non éditables dans l'UI)
 // - Surcote calculée automatiquement (âge légal + trimestres en plus)
+// - Intégration départ anticipé pour travailleurs handicapés
 // ----------------------------------------------------
 
 export const TAUX_PLEIN = 0.5;               // 50 %
@@ -27,68 +28,156 @@ export const AGE_LEGAL_PAR_NAISSANCE: Record<number, number> = {
     1965: 63, 1966: 63.25, 1967: 63.5, 1968: 63.75, 1969: 64, 1970: 64,
 };
 
+// 🔹 Départs anticipés travailleurs handicapés
+export const AGE_DEP_TRIM_HANDI: Record<string | number, any> = {
+    "avant-1961-09-01": { annee: 59, mois: 0, trimestres: 68 },
+    "1961-09-01_to_1962-12-31": { annee: 59, mois: 0, trimestres: 68 },
+    1963: {
+        58: { trimestres: 79, mois: 0, annee: 58 },
+        59: { trimestres: 68, mois: 0, annee: 59 }
+    },
+    1964: {
+        58: { trimestres: 79, mois: 0, annee: 58 },
+        59: { trimestres: 69, mois: 0, annee: 59 }
+    },
+    1965: {
+        57: { trimestres: 89, mois: 0, annee: 57 },
+        58: { trimestres: 79, mois: 0, annee: 58 },
+        59: { trimestres: 69, mois: 0, annee: 59 }
+    },
+    1966: {
+        56: { trimestres: 99, mois: 0, annee: 56 },
+        57: { trimestres: 89, mois: 0, annee: 57 },
+        58: { trimestres: 79, mois: 0, annee: 58 },
+        59: { trimestres: 69, mois: 0, annee: 59 }
+    },
+    1967: {
+        55: { trimestres: 110, mois: 0, annee: 55 },
+        56: { trimestres: 100, mois: 0, annee: 56 },
+        57: { trimestres: 90, mois: 0, annee: 57 },
+        58: { trimestres: 80, mois: 0, annee: 58 },
+        59: { trimestres: 70, mois: 0, annee: 59 }
+    },
+    1968: {
+        55: { trimestres: 110, mois: 0, annee: 55 },
+        56: { trimestres: 100, mois: 0, annee: 56 },
+        57: { trimestres: 90, mois: 0, annee: 57 },
+        58: { trimestres: 80, mois: 0, annee: 58 },
+        59: { trimestres: 70, mois: 0, annee: 59 }
+    },
+    1969: {
+        55: { trimestres: 110, mois: 0, annee: 55 },
+        56: { trimestres: 100, mois: 0, annee: 56 },
+        57: { trimestres: 90, mois: 0, annee: 57 },
+        58: { trimestres: 80, mois: 0, annee: 58 },
+        59: { trimestres: 70, mois: 0, annee: 59 }
+    },
+    1970: {
+        55: { trimestres: 111, mois: 0, annee: 55 },
+        56: { trimestres: 101, mois: 0, annee: 56 },
+        57: { trimestres: 91, mois: 0, annee: 57 },
+        58: { trimestres: 81, mois: 0, annee: 58 },
+        59: { trimestres: 71, mois: 0, annee: 59 }
+    },
+    1971: {
+        55: { trimestres: 111, mois: 0, annee: 55 },
+        56: { trimestres: 101, mois: 0, annee: 56 },
+        57: { trimestres: 91, mois: 0, annee: 57 },
+        58: { trimestres: 81, mois: 0, annee: 58 },
+        59: { trimestres: 71, mois: 0, annee: 59 }
+    },
+    1972: {
+        55: { trimestres: 111, mois: 0, annee: 55 },
+        56: { trimestres: 101, mois: 0, annee: 56 },
+        57: { trimestres: 91, mois: 0, annee: 57 },
+        58: { trimestres: 81, mois: 0, annee: 58 },
+        59: { trimestres: 71, mois: 0, annee: 59 }
+    },
+    1973: {
+        55: { trimestres: 112, mois: 0, annee: 55 },
+        56: { trimestres: 102, mois: 0, annee: 56 },
+        57: { trimestres: 92, mois: 0, annee: 57 },
+        58: { trimestres: 82, mois: 0, annee: 58 },
+        59: { trimestres: 72, mois: 0, annee: 59 }
+    }
+};
+
+// ----------------------------------------------------
+// Interfaces
+// ----------------------------------------------------
 export interface DonneesRetraite {
     anneeNaissance: number;
     ageDepart: number;          // en années (ex: 64)
-    sam: number;                // Salaire Annuel Moyen "brut" saisi (on le plafonne ensuite)
-    trimestresAcquis: number;   // total (cotisés + assimilés + rachetés durées si vous les intégrez en amont)
+    sam: number;                // Salaire Annuel Moyen "brut"
+    trimestresAcquis: number;
+    handicape?: boolean;        // 🔹 Nouveau : statut travailleur handicapé
 }
 
 export interface ResultatRetraite {
     ageLegal: number;
     trimestresRequis: number;
-    ecartTrimestres: number;          // acquis - requis
-    surcoteTrimestres: number;        // calcul auto
-    tauxEffectif: number;             // en décimal (ex: 0.515)
-    ratio: number;                    // min(acquis/requis, 1)
-    samPlafonne: number;              // SAM plafonné PASS
+    ecartTrimestres: number;
+    surcoteTrimestres: number;
+    tauxEffectif: number;
+    ratio: number;
+    samPlafonne: number;
     pensionAnnuelleBrute: number;
     pensionMensuelleBrute: number;
     pensionMensuelleNette: number;
+    handicape: boolean;
 }
 
 // helper
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
+// ----------------------------------------------------
+// Fonction principale
+// ----------------------------------------------------
 export function calculerRetraite(d: DonneesRetraite): ResultatRetraite {
-    const trimestresRequis = TRIMESTRES_REQUIS_PAR_NAISSANCE[d.anneeNaissance] ?? 172;
-    const ageLegal = AGE_LEGAL_PAR_NAISSANCE[d.anneeNaissance] ?? 64;
+    let trimestresRequis = TRIMESTRES_REQUIS_PAR_NAISSANCE[d.anneeNaissance] ?? 172;
+    let ageLegal = AGE_LEGAL_PAR_NAISSANCE[d.anneeNaissance] ?? 64;
 
-    // SAM plafonné PASS (NB : dans la vraie vie, c'est un plafonnement année par année avant moyenne)
+    // 🔹 Si handicapé, on cherche une entrée spécifique dans AGE_DEP_TRIM_HANDI
+    if (d.handicape) {
+        const donneesHandi = AGE_DEP_TRIM_HANDI[d.anneeNaissance];
+        if (donneesHandi) {
+            // On prend le plus bas âge possible (le départ le plus précoce)
+            const agesPossibles = Object.keys(donneesHandi).map(a => Number(a));
+            const ageMin = Math.min(...agesPossibles);
+            ageLegal = ageMin;
+            trimestresRequis = donneesHandi[ageMin].trimestres;
+        }
+    }
+
+    // SAM plafonné PASS
     const samPlafonne = Math.min(d.sam, PASS_ANNUEL);
 
     // Ecart de durée
     const ecartTrimestres = d.trimestresAcquis - trimestresRequis;
 
     // Calcul automatique des trimestres de surcote
-    // - condition 1 : être au moins à l'âge légal
-    // - condition 2 : avoir plus de trimestres que requis
-    // - on borne par le nombre de trimestres effectivement travaillés après l'âge légal
     const trimestresApresAgeLegal = d.ageDepart > ageLegal ? Math.floor((d.ageDepart - ageLegal) * 4) : 0;
     const trimestresSupp = Math.max(0, ecartTrimestres);
     const surcoteTrimestres = Math.min(trimestresSupp, trimestresApresAgeLegal);
 
-    // Taux effectif (décote si manquants, + surcote si conditions OK)
+    // Taux effectif
     let tauxDecoteSurcote = TAUX_PLEIN;
     if (ecartTrimestres < 0) {
         tauxDecoteSurcote -= Math.abs(ecartTrimestres) * DECOTE_PAR_TRIMESTRE;
         tauxDecoteSurcote = Math.max(0, tauxDecoteSurcote);
     }
-    // Surcote s'applique seulement si âge légal atteint ET trimestresSupp > 0
     if (surcoteTrimestres > 0) {
         tauxDecoteSurcote += surcoteTrimestres * SURCOTE_PAR_TRIMESTRE;
     }
 
     const ratio = clamp(d.trimestresAcquis / trimestresRequis, 0, 1);
 
-    // Application du CAP 50% PASS sur la partie "hors surcote" :
-    const partTauxSansSurcote = Math.min(tauxDecoteSurcote, TAUX_PLEIN);      // max 50%
-    const pensionBaseSansSurcote = samPlafonne * partTauxSansSurcote * ratio; // base
-    const capBase = PASS_ANNUEL * TAUX_PLEIN;                                  // 50% PASS
+    // Calcul pension
+    const partTauxSansSurcote = Math.min(tauxDecoteSurcote, TAUX_PLEIN);
+    const pensionBaseSansSurcote = samPlafonne * partTauxSansSurcote * ratio;
+    const capBase = PASS_ANNUEL * TAUX_PLEIN;
     const pensionBaseCapped = Math.min(pensionBaseSansSurcote, capBase);
-
-    // Ajout de la SURCOTE au-delà du cap (comme autorisé par la règle)
-    const pctSurcote = Math.max(0, tauxDecoteSurcote - TAUX_PLEIN);            // ex: +0.025 si 2 trimestres
+    const pctSurcote = Math.max(0, tauxDecoteSurcote - TAUX_PLEIN);
     const pensionSurcote = samPlafonne * pctSurcote * ratio;
 
     const pensionAnnuelleBrute = pensionBaseCapped + pensionSurcote;
@@ -106,5 +195,6 @@ export function calculerRetraite(d: DonneesRetraite): ResultatRetraite {
         pensionAnnuelleBrute,
         pensionMensuelleBrute,
         pensionMensuelleNette,
+        handicape: true
     };
 }
