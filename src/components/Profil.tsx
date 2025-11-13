@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+interface Enfant {
+    prenom: string;
+    nom: string;
+    dateNaissance: string;
+    adopte: boolean;
+    ageAdoption?: number;
+}
+
 interface User {
     nom?: string;
     prenom?: string;
     dateNaissance?: string;
-    statut?: string;
+    sexe?: string;
     handicape?: boolean;
+    enfants?: Enfant[];
+    statut?: string;
 }
 
 export default function Profil() {
@@ -21,8 +31,10 @@ export default function Profil() {
                 nom: parsed.nom || "",
                 prenom: parsed.prenom || "",
                 dateNaissance: parsed.dateNaissance || "",
-                statut: "Retraité", // par défaut si tu veux
+                sexe: parsed.sexe || "",
                 handicape: parsed.handicape || false,
+                enfants: parsed.enfants || [],
+                statut: "Retraité",
             });
         }
     }, []);
@@ -42,12 +54,38 @@ export default function Profil() {
                         <p><strong>Nom :</strong> {user.nom}</p>
                         <p><strong>Prénom :</strong> {user.prenom}</p>
                         <p><strong>Date de naissance :</strong> {user.dateNaissance}</p>
+                        <p><strong>Sexe :</strong> {user.sexe}</p>
                         <p><strong>Statut :</strong> {user.statut}</p>
-                        {user.handicape && <p><strong>Handicap :</strong> Travailleur handicapé ✅</p>}
+                        <p>
+                            <strong>Handicap :</strong> {user.handicape ? "Travailleur handicapé" : "Travailleur non handicapé"}
+                        </p>
                     </div>
                 </section>
 
-                {/* Paramètres / actions */}
+                {/* Enfants */}
+                <section className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-inner space-y-4">
+                    <h2 className="text-2xl font-semibold text-gray-800 text-center">Enfants</h2>
+                    {user.enfants && user.enfants.length > 0 ? (
+                        <ul className="space-y-3">
+                            {user.enfants.map((e, i) => (
+                                <li key={i} className="bg-white p-4 rounded-xl shadow flex justify-between items-center">
+                                    <div>
+                                        <p><strong>Nom :</strong> {e.nom}</p>
+                                        <p><strong>Prénom :</strong> {e.prenom}</p>
+                                        <p><strong>Date de naissance :</strong> {e.dateNaissance}</p>
+                                        {e.adopte && e.ageAdoption && (
+                                            <p><strong>Adopté(e) à :</strong> {e.ageAdoption} ans</p>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-center text-gray-600">Aucun enfant enregistré.</p>
+                    )}
+                </section>
+
+                {/* Actions */}
                 <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-inner space-y-4">
                     <h2 className="text-2xl font-semibold text-gray-800 text-center">Paramètres</h2>
                     <button
