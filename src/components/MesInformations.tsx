@@ -16,6 +16,7 @@ interface Periode {
     fin: string;
     trimestres: number;
     salaire: number;
+    valide?: boolean;
 }
 
 type Onglet = "infos" | "enfants" | "carriere";
@@ -24,7 +25,7 @@ export default function MesInformations() {
     const navigate = useNavigate();
     const [ongletActif, setOngletActif] = useState<Onglet>("infos");
 
-    // 🧍 Infos perso
+    // Infos perso
     const [nom, setNom] = useState("");
     const [prenom, setPrenom] = useState("");
     const [sexe, setSexe] = useState("Femme");
@@ -32,7 +33,7 @@ export default function MesInformations() {
     const [handicape, setHandicape] = useState(false);
     const [erreursPeriodes, setErreursPeriodes] = useState<{[key:number]: string}>({});
 
-    // 👶 Enfants
+    // Enfants
     const [enfants, setEnfants] = useState<Enfant[]>([]);
     const [nouvelEnfant, setNouvelEnfant] = useState<Enfant>({
         prenom: "",
@@ -41,21 +42,10 @@ export default function MesInformations() {
         adopte: false,
     });
 
-    // 💼 Carrière
-    const [firstYear, setFirstYear] = useState("");
-    const [retirementAge, setRetirementAge] = useState("");
-    const [retirementAgePossible, setRetirementAgePossible] = useState("");
+    // Carrière
     const [periodes, setPeriodes] = useState<Periode[]>([]);
-    const [boolReprise, setBoolReprise] = useState(false);
-    const [travailChezLeMemeEmployeur, setTravailChezLeMemeEmployeur] = useState(false);
-    const [moisDepuisDepartMemeEmployeur, setMoisDepuisDepartMemeEmployeur] = useState(0);
-    const [salaireDuCumulTravailRetraite, setSalaireDuCumulTravailRetraite] = useState(0);
-    const [salaireMois1, setSalaireMois1] = useState(0);
-    const [salaireMois2, setSalaireMois2] = useState(0);
-    const [salaireMois3, setSalaireMois3] = useState(0);
-    const [boolObtRetrObli, setBoolObtRetrObli] = useState(false);
 
-    // 💾 Chargement au démarrage
+    // Chargement initial
     useEffect(() => {
         const data = localStorage.getItem("mesInfos");
         if (data) {
@@ -66,22 +56,18 @@ export default function MesInformations() {
             if (parsed.dateNaissance) setDateNaissance(parsed.dateNaissance);
             if (parsed.handicape !== undefined) setHandicape(parsed.handicape);
             if (parsed.enfants) setEnfants(parsed.enfants);
-            if (parsed.firstYear) setFirstYear(parsed.firstYear);
-            if (parsed.retirementAge) setRetirementAge(parsed.retirementAge);
-            if (parsed.retirementAgePossible) setRetirementAgePossible(parsed.retirementAgePossible);
-            if (parsed.periodes) setPeriodes(parsed.periodes);
-            if (parsed.boolReprise) setBoolReprise(parsed.boolReprise);
-            if (parsed.travailChezLeMemeEmployeur) setTravailChezLeMemeEmployeur(parsed.travailChezLeMemeEmployeur);
-            if (parsed.moisDepuisDepartMemeEmployeur) setMoisDepuisDepartMemeEmployeur(parsed.moisDepuisDepartMemeEmployeur);
-            if (parsed.salaireDuCumulTravailRetraite) setSalaireDuCumulTravailRetraite(parsed.salaireDuCumulTravailRetraite);
-            if (parsed.salaireMois1) setSalaireMois1(parsed.salaireMois1);
-            if (parsed.salaireMois2) setSalaireMois2(parsed.salaireMois2);
-            if (parsed.salaireMois3) setSalaireMois3(parsed.salaireMois3);
-            if (parsed.boolObtRetrObli) setBoolObtRetrObli(parsed.boolObtRetrObli);
+        }
+
+        const storedPeriodes = localStorage.getItem("periodesStockees");
+        if (storedPeriodes) {
+            try {
+                const parsed: Periode[] = JSON.parse(storedPeriodes);
+                setPeriodes(parsed);
+            } catch {}
         }
     }, []);
 
-    // ✅ Sauvegarde globale
+    // Sauvegarde globale
     const validerDonnees = () => {
         const data = {
             nom,
@@ -89,54 +75,73 @@ export default function MesInformations() {
             sexe,
             dateNaissance,
             handicape,
-            enfants,
-            firstYear,
-            retirementAge,
-            retirementAgePossible,
-            periodes,
-            boolReprise,
-            travailChezLeMemeEmployeur,
-            moisDepuisDepartMemeEmployeur,
-            salaireDuCumulTravailRetraite,
-            salaireMois1,
-            salaireMois2,
-            salaireMois3,
-            boolObtRetrObli,
+            enfants
         };
         localStorage.setItem("mesInfos", JSON.stringify(data));
     };
 
-    function sauvegarderPeriodeLocalStorage(period: Periode) {
-        const key = "periodesStockees";
-
-        let existantes: Periode[] = [];
-
-        try {
-            const brut = localStorage.getItem(key);
-            if (brut) existantes = JSON.parse(brut) as Periode[];
-        } catch {
-            existantes = [];
-        }
-
-        const index = existantes.findIndex(p => p.id === period.id);
-
-        if (index !== -1) {
-            existantes[index] = period; // update
-        } else {
-            existantes.push(period); // add new
-        }
-
-        localStorage.setItem(key, JSON.stringify(existantes));
-    }
-
-    // ✅ Validation + redirection
-    const validerEtAllerProfil = () => {
-        validerDonnees();
-        alert("✅ Informations enregistrées avec succès !");
-        navigate("/profil");
+    // Périodes
+    const sauvegarderPeriodes = (updatedPeriodes: Periode[]) => {
+        localStorage.setItem("periodesStockees", JSON.stringify(updatedPeriodes));
+        setPeriodes(updatedPeriodes);
     };
 
-    // 👶 Gestion des enfants
+    const ajouterPeriode = () => {
+        const newId = periodes.length === 0 ? 1 : Math.max(...periodes.map(p => p.id)) + 1;
+        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }]);
+    };
+
+    const updatePeriode = (id: number, data: Partial<Periode>) => {
+        const updated = periodes.map(p => p.id === id ? { ...p, ...data } : p);
+        setPeriodes(updated);
+    };
+
+    const validerPeriode = (id: number) => {
+        const periode = periodes.find(p => p.id === id);
+        if (!periode) return;
+
+        const updatedPeriodes = periodes.map(p =>
+            p.id === id ? { ...p, valide: true } : p
+        );
+
+        // Vérifier chevauchement
+        const start = new Date(periode.debut).getTime();
+        const end = new Date(periode.fin).getTime();
+        const chevauche = updatedPeriodes.some(p => {
+            if (p.id === id || !p.debut || !p.fin) return false;
+            const pStart = new Date(p.debut).getTime();
+            const pEnd = new Date(p.fin).getTime();
+            return start <= pEnd && end >= pStart;
+        });
+
+        if (chevauche) {
+            setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Cette période chevauche une autre période." }));
+            return;
+        }
+
+        // Vérification trimestres et salaire
+        let maxTrimestres = 0;
+        if (periode.debut && periode.fin) {
+            const months = (new Date(periode.fin).getFullYear() - new Date(periode.debut).getFullYear()) * 12
+                + (new Date(periode.fin).getMonth() - new Date(periode.debut).getMonth()) + 1;
+            maxTrimestres = Math.floor(months / 3);
+        }
+        if (periode.trimestres <= 0 || periode.trimestres > maxTrimestres || !periode.salaire || periode.salaire <= 0) {
+            setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Trimestres ou salaire incorrect" }));
+            return;
+        }
+
+        // Tout ok -> sauvegarder
+        setErreursPeriodes(prev => ({ ...prev, [id]: "" }));
+        sauvegarderPeriodes(updatedPeriodes);
+    };
+
+    const supprimerPeriode = (id: number) => {
+        const updated = periodes.filter(p => p.id !== id);
+        sauvegarderPeriodes(updated);
+    };
+
+    // Enfants
     const ajouterEnfant = () => {
         if (!nouvelEnfant.prenom || !nouvelEnfant.nom || !nouvelEnfant.dateNaissance) return;
         setEnfants([...enfants, nouvelEnfant]);
@@ -151,51 +156,10 @@ export default function MesInformations() {
         setEnfants(enfants.filter((_, i) => i !== index));
     };
 
-    const periodeChevauche = (id: number, debut: string, fin: string) => {
-        if (!debut || !fin) return false;
-
-        const start = new Date(debut).getTime();
-        const end = new Date(fin).getTime();
-
-        return periodes.some(p => {
-            if (p.id === id) return false;
-            if (!p.debut || !p.fin) return false;
-
-            const pStart = new Date(p.debut).getTime();
-            const pEnd = new Date(p.fin).getTime();
-
-            return start <= pEnd && end >= pStart;
-        });
-    };
-
-    // 💼 Gestion carrière
-    const ajouterPeriode = () => {
-        const newId = periodes.length === 0 ? 1 : Math.max(...periodes.map(p => p.id)) + 1;
-        setPeriodes([
-            ...periodes,
-            { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }
-        ]);
-    };
-
-    const updatePeriode = (id: number, data: Partial<Periode>) => {
-        const updated = periodes.map(p => p.id === id ? { ...p, ...data } : p);
-        const periode = updated.find(p => p.id === id);
-
-        setErreursPeriodes({ ...erreursPeriodes, [id]: "" });
-
-        if (periode && periode.debut && periode.fin && periodeChevauche(id, periode.debut, periode.fin)) {
-            setErreursPeriodes({
-                ...erreursPeriodes,
-                [id]: "❌ Cette période chevauche une autre période."
-            });
-            return;
-        }
-
-        setPeriodes(updated);
-    };
-
-    const supprimerPeriode = (id: number) => {
-        setPeriodes(periodes.filter(p => p.id !== id));
+    const validerEtAllerProfil = () => {
+        validerDonnees();
+        alert("✅ Informations enregistrées avec succès !");
+        navigate("/profil");
     };
 
     return (
@@ -204,21 +168,17 @@ export default function MesInformations() {
 
                 {/* 🧭 Onglets */}
                 <div className="flex justify-center space-x-4 border-b pb-4 mb-8">
-                    {[
-                        { id: "infos", label: "🧍 Informations personnelles" },
-                        { id: "enfants", label: "👶 Enfants" },
-                        { id: "carriere", label: "💼 Carrière" },
-                    ].map((tab) => (
+                    {["infos", "enfants", "carriere"].map(tab => (
                         <button
-                            key={tab.id}
-                            onClick={() => setOngletActif(tab.id as Onglet)}
+                            key={tab}
+                            onClick={() => setOngletActif(tab as Onglet)}
                             className={`px-4 py-2 rounded-full font-medium transition ${
-                                ongletActif === tab.id
+                                ongletActif === tab
                                     ? "bg-purple-600 text-white shadow-lg"
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
-                            {tab.label}
+                            {tab === "infos" ? "🧍 Infos perso" : tab === "enfants" ? "👶 Enfants" : "💼 Carrière"}
                         </button>
                     ))}
                 </div>
@@ -226,9 +186,7 @@ export default function MesInformations() {
                 {/* -------------------- 🧍 Infos personnelles -------------------- */}
                 {ongletActif === "infos" && (
                     <section>
-                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-                            🧍 Informations personnelles
-                        </h2>
+                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">🧍 Informations personnelles</h2>
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner grid md:grid-cols-2 gap-4">
                             <input type="text" placeholder="Nom" value={nom} onChange={e => setNom(e.target.value)} className="p-2 border rounded-lg text-center"/>
                             <input type="text" placeholder="Prénom" value={prenom} onChange={e => setPrenom(e.target.value)} className="p-2 border rounded-lg text-center"/>
@@ -275,31 +233,17 @@ export default function MesInformations() {
                                     <input type="text" placeholder="Prénom" value={nouvelEnfant.prenom} onChange={e => setNouvelEnfant({...nouvelEnfant, prenom:e.target.value})} className="p-2 border rounded-lg"/>
                                     <input type="text" placeholder="Nom" value={nouvelEnfant.nom} onChange={e => setNouvelEnfant({...nouvelEnfant, nom:e.target.value})} className="p-2 border rounded-lg"/>
                                     <input type="date" value={nouvelEnfant.dateNaissance} onChange={e => setNouvelEnfant({...nouvelEnfant, dateNaissance:e.target.value})} className="p-2 border rounded-lg"/>
-
-                                    {/* Texte "Adopté" au-dessus de la checkbox */}
                                     <div className="flex flex-col">
                                         <p className="text-sm text-gray-600 mb-1">Adopté</p>
                                         <div className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={nouvelEnfant.adopte}
-                                                onChange={e=>setNouvelEnfant({...nouvelEnfant, adopte:e.target.checked})}
-                                                className="w-5 h-5 accent-purple-600"
-                                            />
+                                            <input type="checkbox" checked={nouvelEnfant.adopte} onChange={e => setNouvelEnfant({...nouvelEnfant, adopte:e.target.checked})} className="w-5 h-5 accent-purple-600"/>
                                             {nouvelEnfant.adopte && (
-                                                <input
-                                                    type="number"
-                                                    placeholder="Âge adoption"
-                                                    value={nouvelEnfant.ageAdoption || ""}
-                                                    onChange={e=>setNouvelEnfant({...nouvelEnfant, ageAdoption:parseInt(e.target.value)||undefined})}
-                                                    className="p-2 border rounded-lg w-28"
-                                                />
+                                                <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e=>setNouvelEnfant({...nouvelEnfant, ageAdoption:parseInt(e.target.value)||undefined})} className="p-2 border rounded-lg w-28"/>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* --- Boutons --- */}
                                 <div className="flex flex-col gap-3 mt-3">
                                     <button onClick={ajouterEnfant} className="w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                                         <Plus size={18} className="mr-2"/> Ajouter / Enregistrer
@@ -308,7 +252,6 @@ export default function MesInformations() {
                                         ✅ Sauvegarder les enfants
                                     </button>
                                 </div>
-
                             </div>
                         </div>
                     </section>
@@ -324,7 +267,6 @@ export default function MesInformations() {
                             {/* -------------------- PÉRIODES -------------------- */}
                             <div className="space-y-4">
                                 {periodes.map(p => {
-                                    // Calcul du nombre de trimestres max
                                     let maxTrimestres = 0;
                                     if (p.debut && p.fin) {
                                         const debut = new Date(p.debut);
@@ -338,10 +280,7 @@ export default function MesInformations() {
                                     const isDisabled = p.valide;
 
                                     return (
-                                        <div
-                                            key={p.id}
-                                            className={`bg-white p-4 rounded-xl shadow space-y-3 ${isDisabled ? "bg-gray-100 opacity-70" : ""}`}
-                                        >
+                                        <div key={p.id} className={`bg-white p-4 rounded-xl shadow space-y-3 ${isDisabled ? "bg-gray-100 opacity-70" : ""}`}>
                                             <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
 
                                                 {/* Date début */}
@@ -369,29 +308,29 @@ export default function MesInformations() {
                                                 </label>
 
                                                 {/* Trimestres */}
-                                                <label className={`flex flex-col text-sm ${p.valide ? "text-gray-400" : ""}`}>
+                                                <label className={`flex flex-col text-sm ${isDisabled ? "text-gray-400" : ""}`}>
                                                     <span className="text-xs text-gray-500">Trimestres (0 - {maxTrimestres})</span>
                                                     <input
-                                                        type="text"
+                                                        type="number"
                                                         min={0}
                                                         max={maxTrimestres}
                                                         value={p.trimestres}
                                                         onChange={e => updatePeriode(p.id, { trimestres: parseInt(e.target.value) || 0 })}
                                                         className={`p-2 border rounded-lg text-center ${p.trimestres <= 0 || p.trimestres > maxTrimestres ? "border-red-500" : ""}`}
-                                                        disabled={p.valide}
+                                                        disabled={isDisabled}
                                                     />
                                                 </label>
 
                                                 {/* Salaire */}
-                                                <label className={`flex flex-col text-sm ${p.valide ? "text-gray-400" : ""}`}>
+                                                <label className={`flex flex-col text-sm ${isDisabled ? "text-gray-400" : ""}`}>
                                                     <span className="text-xs text-gray-500">SAM de la période</span>
                                                     <input
-                                                        type="text"
+                                                        type="number"
                                                         min={0}
                                                         value={p.salaire || ""}
                                                         onChange={e => updatePeriode(p.id, { salaire: parseFloat(e.target.value) || 0 })}
                                                         className={`p-2 border rounded-lg text-center ${p.salaire <= 0 ? "border-red-500" : ""}`}
-                                                        disabled={p.valide}
+                                                        disabled={isDisabled}
                                                     />
                                                 </label>
 
@@ -427,7 +366,7 @@ export default function MesInformations() {
 
                                                             if (erreurs.length === 0) {
                                                                 updatePeriode(p.id, { valide: true });
-                                                                sauvegarderPeriodeLocalStorage(p);
+                                                                sauvegarderPeriodeLocalStorage({ ...p, valide: true });
                                                                 setErreursPeriodes(prev => ({ ...prev, [p.id]: "" }));
                                                             } else {
                                                                 setErreursPeriodes(prev => ({ ...prev, [p.id]: erreurs.join(", ") }));
@@ -453,7 +392,7 @@ export default function MesInformations() {
                                             </div>
 
                                             {/* Erreurs éventuelles */}
-                                            {erreursPeriodes && erreursPeriodes[p.id] && (
+                                            {erreursPeriodes[p.id] && (
                                                 <p className="text-red-600 text-sm">{erreursPeriodes[p.id]}</p>
                                             )}
                                         </div>
