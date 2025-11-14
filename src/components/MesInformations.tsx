@@ -35,6 +35,7 @@ export default function MesInformations() {
     const [sexe, setSexe] = useState("Femme");
     const [dateNaissance, setDateNaissance] = useState("1960-08-08");
     const [handicape, setHandicape] = useState(false);
+    const [militaire, setMilitaire] = useState(false);
     const [erreursPeriodes, setErreursPeriodes] = useState<{[key:number]: string}>({});
 
 
@@ -60,6 +61,7 @@ export default function MesInformations() {
             if (parsed.sexe) setSexe(parsed.sexe);
             if (parsed.dateNaissance) setDateNaissance(parsed.dateNaissance);
             if (parsed.handicape !== undefined) setHandicape(parsed.handicape);
+            if (parsed.militaire !== undefined) setMilitaire(parsed.militaire);
             if (parsed.enfants) setEnfants(parsed.enfants);
         }
 
@@ -80,6 +82,7 @@ export default function MesInformations() {
             sexe,
             dateNaissance,
             handicape,
+            militaire,
             enfants
         };
         localStorage.setItem("mesInfos", JSON.stringify(data));
@@ -232,22 +235,83 @@ export default function MesInformations() {
                             <img src={InfoPerso} className="w-8 h-8" />
                             Informations personnelles
                         </h2>
+
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner grid md:grid-cols-2 gap-4">
-                            <input type="text" placeholder="Nom" value={nom} onChange={e => setNom(e.target.value)} className="p-2 border rounded-lg text-center"/>
-                            <input type="text" placeholder="Prénom" value={prenom} onChange={e => setPrenom(e.target.value)} className="p-2 border rounded-lg text-center"/>
-                            <select value={sexe} onChange={e => setSexe(e.target.value)} className="p-2 border rounded-lg text-center">
+
+                            {/* Nom */}
+                            <input
+                                type="text"
+                                placeholder="Nom"
+                                value={nom}
+                                onChange={e => setNom(e.target.value)}
+                                className="p-2 border rounded-lg text-center"
+                            />
+
+                            {/* Prénom */}
+                            <input
+                                type="text"
+                                placeholder="Prénom"
+                                value={prenom}
+                                onChange={e => setPrenom(e.target.value)}
+                                className="p-2 border rounded-lg text-center"
+                            />
+
+                            {/* Sexe */}
+                            <select
+                                value={sexe}
+                                onChange={e => {
+                                    setSexe(e.target.value);
+                                    if (e.target.value !== "Homme") {
+                                        setMilitaire(false); // 🔄 reset si pas un homme
+                                    }
+                                }}
+                                className="p-2 border rounded-lg text-center"
+                            >
                                 <option>Femme</option>
                                 <option>Homme</option>
                                 <option>Autre</option>
                             </select>
-                            <input type="date" value={dateNaissance} onChange={e => setDateNaissance(e.target.value)} className="p-2 border rounded-lg text-center"/>
+
+                            {/* Date de naissance */}
+                            <input
+                                type="date"
+                                value={dateNaissance}
+                                onChange={e => setDateNaissance(e.target.value)}
+                                className="p-2 border rounded-lg text-center"
+                            />
+
+                            {/* Handicap */}
                             <div className="md:col-span-2 flex items-center space-x-3">
-                                <input id="handicape" type="checkbox" checked={handicape} onChange={e => setHandicape(e.target.checked)} className="w-5 h-5 accent-purple-600"/>
+                                <input
+                                    id="handicape"
+                                    type="checkbox"
+                                    checked={handicape}
+                                    onChange={e => setHandicape(e.target.checked)}
+                                    className="w-5 h-5 accent-purple-600"
+                                />
                                 <label htmlFor="handicape">Je suis reconnu(e) en situation de handicap</label>
                             </div>
+
+                            {/* 🔵 Service militaire — uniquement si Homme */}
+                            {sexe === "Homme" && (
+                                <div className="md:col-span-2 flex items-center space-x-3">
+                                    <input
+                                        id="militaire"
+                                        type="checkbox"
+                                        checked={militaire}
+                                        onChange={e => setMilitaire(e.target.checked)}
+                                        className="w-5 h-5 accent-purple-600"
+                                    />
+                                    <label htmlFor="militaire">J'ai effectué le service militaire</label>
+                                </div>
+                            )}
                         </div>
+
                         <div className="flex justify-center mt-6">
-                            <button onClick={validerEtAllerProfil} className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition">
+                            <button
+                                onClick={validerEtAllerProfil}
+                                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+                            >
                                 ✅ Valider mes informations
                             </button>
                         </div>
