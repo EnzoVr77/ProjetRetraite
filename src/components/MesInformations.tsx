@@ -390,7 +390,13 @@ export default function MesInformations() {
                                                         onClick={() => {
                                                             const erreurs: string[] = [];
 
-                                                            // Vérifier chevauchement avec les autres périodes
+                                                            // Conversion FRANC → EURO si nécessaire
+                                                            let salaireEuro = p.salaire;
+                                                            if (p.devise === "FRF") {
+                                                                salaireEuro = +(p.salaire / 6.55957).toFixed(2);
+                                                            }
+
+                                                            // Vérifier chevauchement
                                                             const chevauche = periodes.some(other =>
                                                                 other.id !== p.id &&
                                                                 p.debut && p.fin && other.debut && other.fin &&
@@ -398,19 +404,29 @@ export default function MesInformations() {
                                                             );
                                                             if (chevauche) erreurs.push("Période chevauche une autre période");
 
-                                                            if (p.trimestres <= 0 || p.trimestres > maxTrimestres) erreurs.push("Trimestres incorrects");
-                                                            if (!p.salaire || p.salaire <= 0) erreurs.push("Salaire incorrect");
+                                                            if (p.trimestres <= 0 || p.trimestres > maxTrimestres)
+                                                                erreurs.push("Trimestres incorrects");
+
+                                                            if (!salaireEuro || salaireEuro <= 0)
+                                                                erreurs.push("Salaire incorrect");
 
                                                             if (erreurs.length === 0) {
-                                                                updatePeriode(p.id, { valide: true });
-                                                                sauvegarderPeriodeLocalStorage({ ...p, valide: true });
+                                                                const periodeFinale = {
+                                                                    ...p,
+                                                                    salaire: salaireEuro,
+                                                                    devise: "EUR",
+                                                                    valide: true
+                                                                };
+
+                                                                updatePeriode(p.id, periodeFinale);
+                                                                sauvegarderPeriodeLocalStorage(periodeFinale);
+
                                                                 setErreursPeriodes(prev => ({ ...prev, [p.id]: "" }));
                                                             } else {
                                                                 setErreursPeriodes(prev => ({ ...prev, [p.id]: erreurs.join(", ") }));
                                                             }
                                                         }}
                                                         className="p-2 rounded-lg hover:bg-green-100"
-                                                        title="Valider la période"
                                                     >
                                                         <Check size={18} className="text-green-600" />
                                                     </button>
