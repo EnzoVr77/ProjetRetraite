@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import IconProfil from "../../SVG/people-nearby-svgrepo-com.svg"
 
 interface Enfant {
     prenom: string;
@@ -41,8 +42,9 @@ export default function Profil() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 pt-24 p-6 flex flex-col items-center">
-            <h1 className="text-4xl font-extrabold text-blue-900 mb-10 text-center">
-                👤 Mon Profil
+            <h1 className="text-4xl font-extrabold text-blue-900 mb-10 text-center flex items-center justify-center gap-3">
+                <img src={IconProfil} alt="Profil" className="w-10 h-10" />
+                Mon Profil
             </h1>
 
             <div className="bg-white shadow-2xl rounded-[2rem] p-10 w-full max-w-4xl space-y-10">

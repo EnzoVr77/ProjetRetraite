@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import {Plus, Pencil, Trash2, Check} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import InfoPerso from "../../SVG/people-nearby-svgrepo-com.svg"
+import Enfants from "../../SVG/child-friendly-svgrepo-com.svg"
+import Carriere from "../../SVG/suitcase-tag-svgrepo-com.svg"
 
 interface Enfant {
     prenom: string;
@@ -202,7 +205,22 @@ export default function MesInformations() {
                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                         >
-                            {tab === "infos" ? "🧍 Infos perso" : tab === "enfants" ? "👶 Enfants" : "💼 Carrière"}
+                            {tab === "infos" ? (
+                                <span className="flex items-center gap-2">
+        <img src={InfoPerso} className="w-5 h-5" />
+        Infos perso
+    </span>
+                            ) : tab === "enfants" ? (
+                                <span className="flex items-center gap-2">
+        <img src={Enfants} className="w-5 h-5" />
+        Enfants
+    </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+        <img src={Carriere} className="w-5 h-5" />
+        Carrière
+    </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -210,7 +228,10 @@ export default function MesInformations() {
                 {/* -------------------- 🧍 Infos personnelles -------------------- */}
                 {ongletActif === "infos" && (
                     <section>
-                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">🧍 Informations personnelles</h2>
+                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center gap-3">
+                            <img src={InfoPerso} className="w-8 h-8" />
+                            Informations personnelles
+                        </h2>
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner grid md:grid-cols-2 gap-4">
                             <input type="text" placeholder="Nom" value={nom} onChange={e => setNom(e.target.value)} className="p-2 border rounded-lg text-center"/>
                             <input type="text" placeholder="Prénom" value={prenom} onChange={e => setPrenom(e.target.value)} className="p-2 border rounded-lg text-center"/>
@@ -236,7 +257,10 @@ export default function MesInformations() {
                 {/* -------------------- 👶 Enfants -------------------- */}
                 {ongletActif === "enfants" && (
                     <section>
-                        <h2 className="text-2xl font-bold text-center mb-6">👶 Enfants</h2>
+                        <h2 className="text-2xl font-bold text-center mb-6 flex items-center justify-center gap-3">
+                            <img src={Enfants} className="w-8 h-8" />
+                            Enfants
+                        </h2>
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
                             {enfants.length === 0 ? <p className="text-center text-gray-600">Aucun enfant enregistré.</p> : (
                                 <ul className="space-y-3">
@@ -284,7 +308,10 @@ export default function MesInformations() {
                 {/* -------------------- 💼 Carrière -------------------- */}
                 {ongletActif === "carriere" && (
                     <section>
-                        <h2 className="text-2xl font-bold text-center mb-6">💼 Carrière</h2>
+                        <h2 className="text-2xl font-bold text-center mb-6 flex items-center justify-center gap-3">
+                            <img src={Carriere} className="w-8 h-8" />
+                            Carrière
+                        </h2>
 
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
 
