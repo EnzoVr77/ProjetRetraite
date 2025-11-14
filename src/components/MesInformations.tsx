@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import {Plus, Pencil, Trash2, Check} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Enfant {
@@ -30,6 +30,7 @@ export default function MesInformations() {
     const [sexe, setSexe] = useState("Femme");
     const [dateNaissance, setDateNaissance] = useState("1960-08-08");
     const [handicape, setHandicape] = useState(false);
+    const [erreursPeriodes, setErreursPeriodes] = useState<{[key:number]: string}>({});
 
     // 👶 Enfants
     const [enfants, setEnfants] = useState<Enfant[]>([]);
@@ -105,6 +106,29 @@ export default function MesInformations() {
         localStorage.setItem("mesInfos", JSON.stringify(data));
     };
 
+    function sauvegarderPeriodeLocalStorage(period: Periode) {
+        const key = "periodesStockees";
+
+        let existantes: Periode[] = [];
+
+        try {
+            const brut = localStorage.getItem(key);
+            if (brut) existantes = JSON.parse(brut) as Periode[];
+        } catch {
+            existantes = [];
+        }
+
+        const index = existantes.findIndex(p => p.id === period.id);
+
+        if (index !== -1) {
+            existantes[index] = period; // update
+        } else {
+            existantes.push(period); // add new
+        }
+
+        localStorage.setItem(key, JSON.stringify(existantes));
+    }
+
     // ✅ Validation + redirection
     const validerEtAllerProfil = () => {
         validerDonnees();
@@ -127,14 +151,49 @@ export default function MesInformations() {
         setEnfants(enfants.filter((_, i) => i !== index));
     };
 
+    const periodeChevauche = (id: number, debut: string, fin: string) => {
+        if (!debut || !fin) return false;
+
+        const start = new Date(debut).getTime();
+        const end = new Date(fin).getTime();
+
+        return periodes.some(p => {
+            if (p.id === id) return false;
+            if (!p.debut || !p.fin) return false;
+
+            const pStart = new Date(p.debut).getTime();
+            const pEnd = new Date(p.fin).getTime();
+
+            return start <= pEnd && end >= pStart;
+        });
+    };
+
     // 💼 Gestion carrière
-    const ajouterPeriode = (idSuivant?: number) => {
-        const newId = idSuivant ? idSuivant + 1 : periodes.length + 1;
-        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }]);
+    const ajouterPeriode = () => {
+        const newId = periodes.length === 0 ? 1 : Math.max(...periodes.map(p => p.id)) + 1;
+        setPeriodes([
+            ...periodes,
+            { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }
+        ]);
     };
+
     const updatePeriode = (id: number, data: Partial<Periode>) => {
-        setPeriodes(periodes.map(p => p.id === id ? { ...p, ...data } : p));
+        const updated = periodes.map(p => p.id === id ? { ...p, ...data } : p);
+        const periode = updated.find(p => p.id === id);
+
+        setErreursPeriodes({ ...erreursPeriodes, [id]: "" });
+
+        if (periode && periode.debut && periode.fin && periodeChevauche(id, periode.debut, periode.fin)) {
+            setErreursPeriodes({
+                ...erreursPeriodes,
+                [id]: "❌ Cette période chevauche une autre période."
+            });
+            return;
+        }
+
+        setPeriodes(updated);
     };
+
     const supprimerPeriode = (id: number) => {
         setPeriodes(periodes.filter(p => p.id !== id));
     };
@@ -259,54 +318,156 @@ export default function MesInformations() {
                 {ongletActif === "carriere" && (
                     <section>
                         <h2 className="text-2xl font-bold text-center mb-6">💼 Carrière</h2>
-                        <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-4">
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <input type="date" value={firstYear} onChange={e=>setFirstYear(e.target.value)} className="p-2 border rounded-lg text-center"/>
-                                <input type="date" value={retirementAge} onChange={e=>setRetirementAge(e.target.value)} className="p-2 border rounded-lg text-center"/>
-                            </div>
-                            <input type="date" value={retirementAgePossible} onChange={e=>setRetirementAgePossible(e.target.value)} className="p-2 border rounded-lg w-full"/>
 
-                            <div className="space-y-3">
-                                {periodes.map(p=>(
-                                    <div key={p.id} className="bg-white p-3 rounded-xl shadow flex flex-col md:flex-row gap-2 md:items-center">
-                                        <input type="date" value={p.debut} onChange={e=>updatePeriode(p.id,{debut:e.target.value})} className="p-2 border rounded-lg"/>
-                                        <input type="date" value={p.fin} onChange={e=>updatePeriode(p.id,{fin:e.target.value})} className="p-2 border rounded-lg"/>
-                                        <input type="number" value={p.trimestres} onChange={e=>updatePeriode(p.id,{trimestres:parseInt(e.target.value)||0})} className="p-2 border rounded-lg w-24 text-center"/>
-                                        <div className="flex space-x-2">
-                                            <button onClick={()=>ajouterPeriode(p.id)} className="px-2 py-1 bg-gray-100 rounded">+ Année</button>
-                                            <button onClick={()=>supprimerPeriode(p.id)} className="px-2 py-1 bg-red-50 text-red-600 rounded flex items-center gap-1"><Trash2 size={14}/> Suppr</button>
+                        <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
+
+                            {/* -------------------- PÉRIODES -------------------- */}
+                            <div className="space-y-4">
+                                {periodes.map(p => {
+                                    // Calcul du nombre de trimestres max
+                                    let maxTrimestres = 0;
+                                    if (p.debut && p.fin) {
+                                        const debut = new Date(p.debut);
+                                        const fin = new Date(p.fin);
+                                        if (fin >= debut) {
+                                            const months = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth()) + 1;
+                                            maxTrimestres = Math.floor(months / 3);
+                                        }
+                                    }
+
+                                    const isDisabled = p.valide;
+
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            className={`bg-white p-4 rounded-xl shadow space-y-3 ${isDisabled ? "bg-gray-100 opacity-70" : ""}`}
+                                        >
+                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+
+                                                {/* Date début */}
+                                                <label className="flex flex-col text-sm">
+                                                    <span className="text-xs text-gray-500">Date de début</span>
+                                                    <input
+                                                        type="date"
+                                                        value={p.debut}
+                                                        onChange={e => updatePeriode(p.id, { debut: e.target.value })}
+                                                        className="p-2 border rounded-lg"
+                                                        disabled={isDisabled}
+                                                    />
+                                                </label>
+
+                                                {/* Date fin */}
+                                                <label className="flex flex-col text-sm">
+                                                    <span className="text-xs text-gray-500">Date de fin</span>
+                                                    <input
+                                                        type="date"
+                                                        value={p.fin}
+                                                        onChange={e => updatePeriode(p.id, { fin: e.target.value })}
+                                                        className="p-2 border rounded-lg"
+                                                        disabled={isDisabled}
+                                                    />
+                                                </label>
+
+                                                {/* Trimestres */}
+                                                <label className={`flex flex-col text-sm ${p.valide ? "text-gray-400" : ""}`}>
+                                                    <span className="text-xs text-gray-500">Trimestres (0 - {maxTrimestres})</span>
+                                                    <input
+                                                        type="text"
+                                                        min={0}
+                                                        max={maxTrimestres}
+                                                        value={p.trimestres}
+                                                        onChange={e => updatePeriode(p.id, { trimestres: parseInt(e.target.value) || 0 })}
+                                                        className={`p-2 border rounded-lg text-center ${p.trimestres <= 0 || p.trimestres > maxTrimestres ? "border-red-500" : ""}`}
+                                                        disabled={p.valide}
+                                                    />
+                                                </label>
+
+                                                {/* Salaire */}
+                                                <label className={`flex flex-col text-sm ${p.valide ? "text-gray-400" : ""}`}>
+                                                    <span className="text-xs text-gray-500">SAM de la période</span>
+                                                    <input
+                                                        type="text"
+                                                        min={0}
+                                                        value={p.salaire || ""}
+                                                        onChange={e => updatePeriode(p.id, { salaire: parseFloat(e.target.value) || 0 })}
+                                                        className={`p-2 border rounded-lg text-center ${p.salaire <= 0 ? "border-red-500" : ""}`}
+                                                        disabled={p.valide}
+                                                    />
+                                                </label>
+
+                                                {/* Actions */}
+                                                <div className="flex justify-end gap-2">
+
+                                                    {/* Modifier */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updatePeriode(p.id, { valide: false })}
+                                                        className="p-2 rounded-lg hover:bg-gray-100"
+                                                        title="Modifier"
+                                                    >
+                                                        <Pencil size={18} className="text-purple-600" />
+                                                    </button>
+
+                                                    {/* Valider */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const erreurs: string[] = [];
+
+                                                            // Vérifier chevauchement avec les autres périodes
+                                                            const chevauche = periodes.some(other =>
+                                                                other.id !== p.id &&
+                                                                p.debut && p.fin && other.debut && other.fin &&
+                                                                !(new Date(p.fin) < new Date(other.debut) || new Date(p.debut) > new Date(other.fin))
+                                                            );
+                                                            if (chevauche) erreurs.push("Période chevauche une autre période");
+
+                                                            if (p.trimestres <= 0 || p.trimestres > maxTrimestres) erreurs.push("Trimestres incorrects");
+                                                            if (!p.salaire || p.salaire <= 0) erreurs.push("Salaire incorrect");
+
+                                                            if (erreurs.length === 0) {
+                                                                updatePeriode(p.id, { valide: true });
+                                                                sauvegarderPeriodeLocalStorage(p);
+                                                                setErreursPeriodes(prev => ({ ...prev, [p.id]: "" }));
+                                                            } else {
+                                                                setErreursPeriodes(prev => ({ ...prev, [p.id]: erreurs.join(", ") }));
+                                                            }
+                                                        }}
+                                                        className="p-2 rounded-lg hover:bg-green-100"
+                                                        title="Valider la période"
+                                                    >
+                                                        <Check size={18} className="text-green-600" />
+                                                    </button>
+
+                                                    {/* Supprimer */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => supprimerPeriode(p.id)}
+                                                        className="p-2 rounded-lg hover:bg-red-100"
+                                                        title="Supprimer"
+                                                    >
+                                                        <Trash2 size={18} className="text-red-600" />
+                                                    </button>
+
+                                                </div>
+                                            </div>
+
+                                            {/* Erreurs éventuelles */}
+                                            {erreursPeriodes && erreursPeriodes[p.id] && (
+                                                <p className="text-red-600 text-sm">{erreursPeriodes[p.id]}</p>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
-                                <button onClick={()=>ajouterPeriode()} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"><Plus size={14}/> Ajouter période</button>
+                                    );
+                                })}
+
+                                <button
+                                    onClick={() => ajouterPeriode()}
+                                    className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center gap-2"
+                                >
+                                    <Plus size={16} /> Ajouter une période
+                                </button>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" checked={boolReprise} onChange={e=>setBoolReprise(e.target.checked)} className="w-5 h-5 accent-purple-600"/>
-                                <span>Reprendre activité après départ ?</span>
-                            </div>
-
-                            {boolReprise && (
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" checked={travailChezLeMemeEmployeur} onChange={e=>setTravailChezLeMemeEmployeur(e.target.checked)} className="w-5 h-5 accent-purple-600"/>
-                                        <span>Même employeur ?</span>
-                                    </div>
-                                    {travailChezLeMemeEmployeur && (
-                                        <input type="number" value={moisDepuisDepartMemeEmployeur} onChange={e=>setMoisDepuisDepartMemeEmployeur(parseInt(e.target.value)||0)} className="p-2 border rounded-lg w-40"/>
-                                    )}
-                                    <input type="number" value={salaireDuCumulTravailRetraite} onChange={e=>setSalaireDuCumulTravailRetraite(parseFloat(e.target.value)||0)} className="p-2 border rounded-lg"/>
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" checked={boolObtRetrObli} onChange={e=>setBoolObtRetrObli(e.target.checked)} className="w-5 h-5 accent-purple-600"/>
-                                <span>J'ai liquidé toutes mes retraites obligatoires</span>
-                            </div>
-
-                            <div className="pt-4 text-center">
-                                <button onClick={validerEtAllerProfil} className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition">✅ Sauvegarder</button>
-                            </div>
                         </div>
                     </section>
                 )}
