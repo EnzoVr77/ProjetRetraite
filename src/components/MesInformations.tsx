@@ -16,6 +16,7 @@ interface Periode {
     fin: string;
     trimestres: number;
     salaire: number;
+    devise?: "EUR" | "FRF";
     valide?: boolean;
 }
 
@@ -32,6 +33,7 @@ export default function MesInformations() {
     const [dateNaissance, setDateNaissance] = useState("1960-08-08");
     const [handicape, setHandicape] = useState(false);
     const [erreursPeriodes, setErreursPeriodes] = useState<{[key:number]: string}>({});
+
 
     // Enfants
     const [enfants, setEnfants] = useState<Enfant[]>([]);
@@ -100,8 +102,17 @@ export default function MesInformations() {
         const periode = periodes.find(p => p.id === id);
         if (!periode) return;
 
+        // 🔄 Conversion FRANC → EURO si nécessaire
+        let salaireEuro = periode.salaire;
+        if (periode.devise === "FRF") {
+            salaireEuro = +(periode.salaire / 6.55957).toFixed(2);
+        }
+
+        // On prépare la période avec conversion + validation
         const updatedPeriodes = periodes.map(p =>
-            p.id === id ? { ...p, valide: true } : p
+            p.id === id
+                ? { ...p, salaire: salaireEuro, devise: "EUR", valide: true }
+                : p
         );
 
         // Vérifier chevauchement
@@ -126,12 +137,13 @@ export default function MesInformations() {
                 + (new Date(periode.fin).getMonth() - new Date(periode.debut).getMonth()) + 1;
             maxTrimestres = Math.floor(months / 3);
         }
-        if (periode.trimestres <= 0 || periode.trimestres > maxTrimestres || !periode.salaire || periode.salaire <= 0) {
+
+        if (periode.trimestres <= 0 || periode.trimestres > maxTrimestres || salaireEuro <= 0) {
             setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Trimestres ou salaire incorrect" }));
             return;
         }
 
-        // Tout ok -> sauvegarder
+        // Tout ok → sauvegarde
         setErreursPeriodes(prev => ({ ...prev, [id]: "" }));
         sauvegarderPeriodes(updatedPeriodes);
     };
@@ -161,6 +173,18 @@ export default function MesInformations() {
         alert("✅ Informations enregistrées avec succès !");
         navigate("/profil");
     };
+
+    const salairesValides = periodes
+        .filter(p => p.valide)
+        .map(p => p.salaire);
+
+    salairesValides.sort((a, b) => b - a);
+
+    const top25 = salairesValides.slice(0, 25);
+
+    const samMoyen = top25.length > 0
+        ? (top25.reduce((a, b) => a + b, 0) / top25.length).toFixed(2)
+        : 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center pt-24 p-6">
@@ -333,6 +357,19 @@ export default function MesInformations() {
                                                         disabled={isDisabled}
                                                     />
                                                 </label>
+                                                {/* Devise */}
+                                                <label className="flex flex-col text-sm">
+                                                    <span className="text-xs text-gray-500">Devise</span>
+                                                    <select
+                                                        value={p.devise || "EUR"}
+                                                        onChange={e => updatePeriode(p.id, { devise: e.target.value as "EUR" | "FRF" })}
+                                                        disabled={isDisabled}
+                                                        className="p-2 border rounded-lg"
+                                                    >
+                                                        <option value="EUR">Euro (€)</option>
+                                                        <option value="FRF">Franc (₣)</option>
+                                                    </select>
+                                                </label>
 
                                                 {/* Actions */}
                                                 <div className="flex justify-end gap-2">
@@ -405,6 +442,12 @@ export default function MesInformations() {
                                 >
                                     <Plus size={16} /> Ajouter une période
                                 </button>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl shadow text-center">
+                                <h3 className="text-lg font-bold">📊 Salaire annuel moyen (25 meilleures années)</h3>
+                                <p className="text-xl text-purple-600 font-semibold mt-2">
+                                    {samMoyen} € / an
+                                </p>
                             </div>
 
                         </div>
