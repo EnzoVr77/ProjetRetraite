@@ -8,9 +8,30 @@ import MaRetraite from "./components/MaRetraite";
 // Page d'accueil / Simulateur
 // -------------------------
 function Simulateur() {
-    // 🔹 Pour l'instant : profil incomplet en brut
-    const profilComplet = false; // tu pourras remplacer par une vraie vérif
-    const infosManquantes = ["Nom", "Prénom", "Date de naissance", "Trimestres acquis"];
+    const infosPerso  = JSON.parse(localStorage.getItem("mesInfos") || "{}");
+    const periodes = JSON.parse(localStorage.getItem("periodesStockees") || "[]");
+
+
+    const champsObligatoires = [
+        { key: "nom", label: "Nom" },
+        { key: "prenom", label: "Prénom" },
+        { key: "dateNaissance", label: "Date de naissance" }
+        // tu peux ajouter d’autres champs ici
+    ];
+
+    const infosManquantesInfosPerso = champsObligatoires
+        .filter(ch => !infosPerso[ch.key] || infosPerso[ch.key].trim() === "")
+        .map(ch => ch.label);
+
+     // 🔹 Vérification des périodes
+    const aucunePeriode = !Array.isArray(periodes) || periodes.length === 0;
+
+    // 🔹 On regroupe tout ce qui manque
+    const infosManquantes = [...infosManquantesInfosPerso];
+    const profilComplet = infosManquantes.length === 0;
+    if (aucunePeriode) {
+        infosManquantes.push("Périodes de travail / Trimestres");
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center pt-24 p-6">
