@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import {Plus, Pencil, Trash2, Check} from "lucide-react";
+import { Plus, Pencil, Trash2, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import InfoPerso from "../../SVG/people-nearby-svgrepo-com.svg"
 import Enfants from "../../SVG/child-friendly-svgrepo-com.svg"
@@ -14,6 +14,7 @@ interface Enfant {
 }
 
 interface Periode {
+    salaireEuro: number;
     id: number;
     debut: string;
     fin: string;
@@ -36,7 +37,7 @@ export default function MesInformations() {
     const [dateNaissance, setDateNaissance] = useState("1960-08-08");
     const [handicape, setHandicape] = useState(false);
     const [militaire, setMilitaire] = useState(false);
-    const [erreursPeriodes, setErreursPeriodes] = useState<{[key:number]: string}>({});
+    const [erreursPeriodes, setErreursPeriodes] = useState<{ [key: number]: string }>({});
 
 
     // Enfants
@@ -70,7 +71,7 @@ export default function MesInformations() {
             try {
                 const parsed: Periode[] = JSON.parse(storedPeriodes);
                 setPeriodes(parsed);
-            } catch {}
+            } catch { }
         }
     }, []);
 
@@ -96,7 +97,7 @@ export default function MesInformations() {
 
     const ajouterPeriode = () => {
         const newId = periodes.length === 0 ? 1 : Math.max(...periodes.map(p => p.id)) + 1;
-        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0 }]);
+        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0, salaireEuro: 0 }]);
     };
 
     const updatePeriode = (id: number, data: Partial<Periode>) => {
@@ -117,7 +118,11 @@ export default function MesInformations() {
         // On prépare la période avec conversion + validation
         const updatedPeriodes = periodes.map(p =>
             p.id === id
-                ? { ...p, salaire: salaireEuro, devise: "EUR", valide: true }
+                ? {
+                    ...p,
+                    salaireEuro: salaireEuro, // 💡 nouvelle propriete pour le calcul
+                    valide: true
+                }
                 : p
         );
 
@@ -182,7 +187,8 @@ export default function MesInformations() {
 
     const salairesValides = periodes
         .filter(p => p.valide)
-        .map(p => p.salaire);
+        .map(p => p.salaireEuro ?? p.salaire); // fallback si pas converti
+
 
     salairesValides.sort((a, b) => b - a);
 
@@ -202,27 +208,26 @@ export default function MesInformations() {
                         <button
                             key={tab}
                             onClick={() => setOngletActif(tab as Onglet)}
-                            className={`px-4 py-2 rounded-full font-medium transition ${
-                                ongletActif === tab
-                                    ? "bg-purple-600 text-white shadow-lg"
-                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
+                            className={`px-4 py-2 rounded-full font-medium transition ${ongletActif === tab
+                                ? "bg-purple-600 text-white shadow-lg"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
                         >
                             {tab === "infos" ? (
                                 <span className="flex items-center gap-2">
-        <img src={InfoPerso} className="w-5 h-5" />
-        Infos perso
-    </span>
+                                    <img src={InfoPerso} className="w-5 h-5" />
+                                    Infos perso
+                                </span>
                             ) : tab === "enfants" ? (
                                 <span className="flex items-center gap-2">
-        <img src={Enfants} className="w-5 h-5" />
-        Enfants
-    </span>
+                                    <img src={Enfants} className="w-5 h-5" />
+                                    Enfants
+                                </span>
                             ) : (
                                 <span className="flex items-center gap-2">
-        <img src={Carriere} className="w-5 h-5" />
-        Carrière
-    </span>
+                                    <img src={Carriere} className="w-5 h-5" />
+                                    Carrière
+                                </span>
                             )}
                         </button>
                     ))}
@@ -328,12 +333,12 @@ export default function MesInformations() {
                         <div className="bg-gray-50 p-6 rounded-2xl shadow-inner space-y-6">
                             {enfants.length === 0 ? <p className="text-center text-gray-600">Aucun enfant enregistré.</p> : (
                                 <ul className="space-y-3">
-                                    {enfants.map((e,i)=>(
+                                    {enfants.map((e, i) => (
                                         <li key={i} className="bg-white p-4 rounded-xl shadow flex justify-between items-center">
-                                            <div>{e.prenom} {e.nom} <br/> {e.dateNaissance} {e.adopte && `(Adopté à ${e.ageAdoption} ans)`}</div>
+                                            <div>{e.prenom} {e.nom} <br /> {e.dateNaissance} {e.adopte && `(Adopté à ${e.ageAdoption} ans)`}</div>
                                             <div className="flex space-x-2">
-                                                <Pencil size={20} className="cursor-pointer text-purple-600" onClick={()=>modifierEnfant(i)}/>
-                                                <Trash2 size={20} className="cursor-pointer text-red-500" onClick={()=>supprimerEnfant(i)}/>
+                                                <Pencil size={20} className="cursor-pointer text-purple-600" onClick={() => modifierEnfant(i)} />
+                                                <Trash2 size={20} className="cursor-pointer text-red-500" onClick={() => supprimerEnfant(i)} />
                                             </div>
                                         </li>
                                     ))}
@@ -342,15 +347,15 @@ export default function MesInformations() {
 
                             <div className="border-t pt-4 mt-4 space-y-3">
                                 <div className="grid md:grid-cols-4 gap-4 items-end">
-                                    <input type="text" placeholder="Prénom" value={nouvelEnfant.prenom} onChange={e => setNouvelEnfant({...nouvelEnfant, prenom:e.target.value})} className="p-2 border rounded-lg"/>
-                                    <input type="text" placeholder="Nom" value={nouvelEnfant.nom} onChange={e => setNouvelEnfant({...nouvelEnfant, nom:e.target.value})} className="p-2 border rounded-lg"/>
-                                    <input type="date" value={nouvelEnfant.dateNaissance} onChange={e => setNouvelEnfant({...nouvelEnfant, dateNaissance:e.target.value})} className="p-2 border rounded-lg"/>
+                                    <input type="text" placeholder="Prénom" value={nouvelEnfant.prenom} onChange={e => setNouvelEnfant({ ...nouvelEnfant, prenom: e.target.value })} className="p-2 border rounded-lg" />
+                                    <input type="text" placeholder="Nom" value={nouvelEnfant.nom} onChange={e => setNouvelEnfant({ ...nouvelEnfant, nom: e.target.value })} className="p-2 border rounded-lg" />
+                                    <input type="date" value={nouvelEnfant.dateNaissance} onChange={e => setNouvelEnfant({ ...nouvelEnfant, dateNaissance: e.target.value })} className="p-2 border rounded-lg" />
                                     <div className="flex flex-col">
                                         <p className="text-sm text-gray-600 mb-1">Adopté</p>
                                         <div className="flex items-center space-x-2">
-                                            <input type="checkbox" checked={nouvelEnfant.adopte} onChange={e => setNouvelEnfant({...nouvelEnfant, adopte:e.target.checked})} className="w-5 h-5 accent-purple-600"/>
+                                            <input type="checkbox" checked={nouvelEnfant.adopte} onChange={e => setNouvelEnfant({ ...nouvelEnfant, adopte: e.target.checked })} className="w-5 h-5 accent-purple-600" />
                                             {nouvelEnfant.adopte && (
-                                                <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e=>setNouvelEnfant({...nouvelEnfant, ageAdoption:parseInt(e.target.value)||undefined})} className="p-2 border rounded-lg w-28"/>
+                                                <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e => setNouvelEnfant({ ...nouvelEnfant, ageAdoption: parseInt(e.target.value) || undefined })} className="p-2 border rounded-lg w-28" />
                                             )}
                                         </div>
                                     </div>
@@ -358,7 +363,7 @@ export default function MesInformations() {
 
                                 <div className="flex flex-col gap-3 mt-3">
                                     <button onClick={ajouterEnfant} className="w-full flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
-                                        <Plus size={18} className="mr-2"/> Ajouter / Enregistrer
+                                        <Plus size={18} className="mr-2" /> Ajouter / Enregistrer
                                     </button>
                                     <button onClick={validerEtAllerProfil} className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
                                         ✅ Sauvegarder les enfants
@@ -478,45 +483,7 @@ export default function MesInformations() {
                                                     {/* Valider */}
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            const erreurs: string[] = [];
-
-                                                            // Conversion FRANC → EURO si nécessaire
-                                                            let salaireEuro = p.salaire;
-                                                            if (p.devise === "FRF") {
-                                                                salaireEuro = +(p.salaire / 6.55957).toFixed(2);
-                                                            }
-
-                                                            // Vérifier chevauchement
-                                                            const chevauche = periodes.some(other =>
-                                                                other.id !== p.id &&
-                                                                p.debut && p.fin && other.debut && other.fin &&
-                                                                !(new Date(p.fin) < new Date(other.debut) || new Date(p.debut) > new Date(other.fin))
-                                                            );
-                                                            if (chevauche) erreurs.push("Période chevauche une autre période");
-
-                                                            if (p.trimestres <= 0 || p.trimestres > maxTrimestres)
-                                                                erreurs.push("Trimestres incorrects");
-
-                                                            if (!salaireEuro || salaireEuro <= 0)
-                                                                erreurs.push("Salaire incorrect");
-
-                                                            if (erreurs.length === 0) {
-                                                                const periodeFinale = {
-                                                                    ...p,
-                                                                    salaire: salaireEuro,
-                                                                    devise: "EUR",
-                                                                    valide: true
-                                                                };
-
-                                                                updatePeriode(p.id, periodeFinale);
-                                                                sauvegarderPeriodeLocalStorage(periodeFinale);
-
-                                                                setErreursPeriodes(prev => ({ ...prev, [p.id]: "" }));
-                                                            } else {
-                                                                setErreursPeriodes(prev => ({ ...prev, [p.id]: erreurs.join(", ") }));
-                                                            }
-                                                        }}
+                                                        onClick={() => validerPeriode(p.id) }
                                                         className="p-2 rounded-lg hover:bg-green-100"
                                                     >
                                                         <Check size={18} className="text-green-600" />
