@@ -107,10 +107,13 @@ export const AGE_DEP_TRIM_HANDI: Record<string | number, any> = {
 // ----------------------------------------------------
 export interface DonneesRetraite {
     anneeNaissance: number;
-    ageDepart: number;          // en années (ex: 64)
-    sam: number;                // Salaire Annuel Moyen "brut"
+    ageDepart: number; // en années (ex: 64)
+    ageDepartAnticipe?: number; // Pour carrière longue
+    sam: number; // Salaire Annuel Moyen "brut"
     trimestresAcquis: number;
-    handicape?: boolean;        // 🔹 Nouveau : statut travailleur handicapé
+    trimestresMajoration?: number; // Trimestres liés aux enfants, service militaire, etc.
+    nbEnfants?: number;
+    handicape?: boolean; // 🔹 Nouveau : statut travailleur handicapé
 }
 
 export interface ResultatRetraite {
@@ -127,17 +130,19 @@ export interface ResultatRetraite {
     handicape: boolean;
 }
 
-// helper
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-
 // ----------------------------------------------------
 // Fonction principale
 // ----------------------------------------------------
 export function calculerRetraite(d: DonneesRetraite): ResultatRetraite {
-    let trimestresRequis = TRIMESTRES_REQUIS_PAR_NAISSANCE[d.anneeNaissance] ?? 172;
-    let ageLegal = AGE_LEGAL_PAR_NAISSANCE[d.anneeNaissance] ?? 64;
+    // Durée d'assurance totale (trimestres cotisés + majorations)
+    const dureeAssurance = d.trimestresAcquis + (d.trimestresMajoration ?? 0);
+
+    // Détermination de l'âge légal et des trimestres requis
+    let trimestresRequis = TRIMESTRES_REQUIS_PAR_NAISSANCE[d.anneeNaissance] ?? 172; // Régime général
+    let ageLegal = d.ageDepartAnticipe ?? AGE_LEGAL_PAR_NAISSANCE[d.anneeNaissance] ?? 64;
 
     // 🔹 Si handicapé, on cherche une entrée spécifique dans AGE_DEP_TRIM_HANDI
+    // Cette logique prévaut sur le régime général si applicable.
     if (d.handicape) {
         const donneesHandi = AGE_DEP_TRIM_HANDI[d.anneeNaissance];
         if (donneesHandi) {
@@ -153,34 +158,53 @@ export function calculerRetraite(d: DonneesRetraite): ResultatRetraite {
     const samPlafonne = Math.min(d.sam, PASS_ANNUEL);
 
     // Ecart de durée
-    const ecartTrimestres = d.trimestresAcquis - trimestresRequis;
+    // L'écart pour la décote/surcote se base sur la durée d'assurance totale.
+    let ecartTrimestres = dureeAssurance - trimestresRequis;
 
     // Calcul automatique des trimestres de surcote
     const trimestresApresAgeLegal = d.ageDepart > ageLegal ? Math.floor((d.ageDepart - ageLegal) * 4) : 0;
     const trimestresSupp = Math.max(0, ecartTrimestres);
     const surcoteTrimestres = Math.min(trimestresSupp, trimestresApresAgeLegal);
 
-    // Taux effectif
+    // Taux effectif (décote/surcote)
     let tauxDecoteSurcote = TAUX_PLEIN;
     if (ecartTrimestres < 0) {
-        tauxDecoteSurcote -= Math.abs(ecartTrimestres) * DECOTE_PAR_TRIMESTRE;
-        tauxDecoteSurcote = Math.max(0, tauxDecoteSurcote);
+        // La décote s'applique sur le nombre de trimestres manquants pour atteindre le taux plein,
+        // soit par l'âge (67 ans), soit par les trimestres requis. On prend le plus avantageux.
+        const ageTauxPleinAuto = 67;
+        const trimestresManquantsPourAgeTauxPlein = d.ageDepart < ageTauxPleinAuto ? Math.ceil((ageTauxPleinAuto - d.ageDepart) * 4) : 0;
+        const trimestresManquants = Math.min(Math.abs(ecartTrimestres), trimestresManquantsPourAgeTauxPlein);
+
+        const decote = trimestresManquants * DECOTE_PAR_TRIMESTRE;
+        tauxDecoteSurcote = Math.max(TAUX_PLEIN - decote, 0.375); // Taux plancher de 37.5%
     }
     if (surcoteTrimestres > 0) {
         tauxDecoteSurcote += surcoteTrimestres * SURCOTE_PAR_TRIMESTRE;
     }
 
-    const ratio = clamp(d.trimestresAcquis / trimestresRequis, 0, 1);
+    // Le ratio de proratisation ne doit pas dépasser 1
+    const ratio = Math.min(dureeAssurance / trimestresRequis, 1);
 
     // Calcul pension
-    const partTauxSansSurcote = Math.min(tauxDecoteSurcote, TAUX_PLEIN);
-    const pensionBaseSansSurcote = samPlafonne * partTauxSansSurcote * ratio;
-    const capBase = PASS_ANNUEL * TAUX_PLEIN;
-    const pensionBaseCapped = Math.min(pensionBaseSansSurcote, capBase);
-    const pctSurcote = Math.max(0, tauxDecoteSurcote - TAUX_PLEIN);
-    const pensionSurcote = samPlafonne * pctSurcote * ratio;
+    // La pension est plafonnée à 50% du PASS *avant* surcote.
+    const pensionDeBase = samPlafonne * Math.min(tauxDecoteSurcote, TAUX_PLEIN) * ratio;
+    const pensionPlafonnee = Math.min(pensionDeBase, PASS_ANNUEL * TAUX_PLEIN);
+    const montantSurcote = samPlafonne * Math.max(0, tauxDecoteSurcote - TAUX_PLEIN) * ratio;
+    let pensionAnnuelleBrute = pensionPlafonnee + montantSurcote;
 
-    const pensionAnnuelleBrute = pensionBaseCapped + pensionSurcote;
+    // Majoration pour 3 enfants ou plus
+    if ((d.nbEnfants ?? 0) >= 3) {
+        pensionAnnuelleBrute *= 1.10;
+    }
+
+    // Majoration spécifique pour handicap
+    if (d.handicape) {
+        const trimestresRequisNonHandi = TRIMESTRES_REQUIS_PAR_NAISSANCE[d.anneeNaissance] ?? 172;
+        if (d.trimestresAcquis >= trimestresRequisNonHandi) {
+            pensionAnnuelleBrute *= (1 + (d.trimestresAcquis / trimestresRequisNonHandi) / 3);
+        }
+    }
+
     const pensionMensuelleBrute = pensionAnnuelleBrute / 12;
     const pensionMensuelleNette = pensionMensuelleBrute * (1 - RETENUES_SOCIALES);
 
@@ -195,6 +219,6 @@ export function calculerRetraite(d: DonneesRetraite): ResultatRetraite {
         pensionAnnuelleBrute,
         pensionMensuelleBrute,
         pensionMensuelleNette,
-        handicape: true
+        handicape: d.handicape ?? false
     };
 }

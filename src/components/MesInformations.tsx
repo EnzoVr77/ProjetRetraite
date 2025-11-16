@@ -429,13 +429,13 @@ export default function MesInformations() {
 
                                                 {/* Trimestres */}
                                                 <label className={`flex flex-col text-sm ${isDisabled ? "text-gray-400" : ""}`}>
-                                                    <span className="text-xs text-gray-500">Trimestres (0 - {maxTrimestres})</span>
+                                                    <span className="text-xs text-gray-500">Trimestres (1 - {maxTrimestres})</span>
                                                     <input
                                                         type="number"
-                                                        min={0}
+                                                        min={1}
                                                         max={maxTrimestres}
                                                         value={p.trimestres}
-                                                        onChange={e => updatePeriode(p.id, { trimestres: parseInt(e.target.value) || 0 })}
+                                                        onChange={e => updatePeriode(p.id, { trimestres: parseInt(e.target.value)})}
                                                         className={`p-2 border rounded-lg text-center ${p.trimestres <= 0 || p.trimestres > maxTrimestres ? "border-red-500" : ""}`}
                                                         disabled={isDisabled}
                                                     />
