@@ -53,26 +53,56 @@ export default function MesInformations() {
     const [periodes, setPeriodes] = useState<Periode[]>([]);
 
     // Chargement initial
+    // Chargement initial + ré-ecoute lors des changements de profils
     useEffect(() => {
-        const data = localStorage.getItem("mesInfos");
-        if (data) {
-            const parsed = JSON.parse(data);
-            if (parsed.nom) setNom(parsed.nom);
-            if (parsed.prenom) setPrenom(parsed.prenom);
-            if (parsed.sexe) setSexe(parsed.sexe);
-            if (parsed.dateNaissance) setDateNaissance(parsed.dateNaissance);
-            if (parsed.handicape !== undefined) setHandicape(parsed.handicape);
-            if (parsed.militaire !== undefined) setMilitaire(parsed.militaire);
-            if (parsed.enfants) setEnfants(parsed.enfants);
-        }
+        const loadFromLocalStorage = () => {
+            const data = localStorage.getItem("mesInfos");
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.nom !== undefined) setNom(parsed.nom);
+                    if (parsed.prenom !== undefined) setPrenom(parsed.prenom);
+                    if (parsed.sexe !== undefined) setSexe(parsed.sexe);
+                    if (parsed.dateNaissance !== undefined) setDateNaissance(parsed.dateNaissance);
+                    if (parsed.handicape !== undefined) setHandicape(parsed.handicape);
+                    if (parsed.militaire !== undefined) setMilitaire(parsed.militaire);
+                    if (parsed.enfants !== undefined) setEnfants(parsed.enfants || []);
+                } catch (e) {
+                    console.warn('Erreur en lisant mesInfos depuis localStorage', e);
+                }
+            }
 
-        const storedPeriodes = localStorage.getItem("periodesStockees");
-        if (storedPeriodes) {
-            try {
-                const parsed: Periode[] = JSON.parse(storedPeriodes);
-                setPeriodes(parsed);
-            } catch { }
-        }
+            const storedPeriodes = localStorage.getItem("periodesStockees");
+            if (storedPeriodes) {
+                try {
+                    const parsed: Periode[] = JSON.parse(storedPeriodes);
+                    setPeriodes(parsed);
+                } catch (e) {
+                    console.warn('Erreur en lisant periodesStockees depuis localStorage', e);
+                }
+            }
+        };
+
+        // load once at mount
+        loadFromLocalStorage();
+
+        // when a profile is applied in the same tab, Navbar dispatches 'profiles-changed'
+        const onProfilesChanged = () => loadFromLocalStorage();
+        window.addEventListener('profiles-changed', onProfilesChanged as EventListener);
+
+        // storage event for cross-tab updates
+        const onStorage = (e: StorageEvent) => {
+            if (!e.key) return;
+            if (['mesInfos', 'periodesStockees', 'profiles', 'selectedProfileId'].includes(e.key)) {
+                loadFromLocalStorage();
+            }
+        };
+        window.addEventListener('storage', onStorage);
+
+        return () => {
+            window.removeEventListener('profiles-changed', onProfilesChanged as EventListener);
+            window.removeEventListener('storage', onStorage);
+        };
     }, []);
 
     // Sauvegarde globale
@@ -87,6 +117,45 @@ export default function MesInformations() {
             enfants
         };
         localStorage.setItem("mesInfos", JSON.stringify(data));
+        // If user is editing a saved profile, update that profile record in localStorage so the Navbar dropdown updates
+        try {
+            const selectedId = localStorage.getItem("selectedProfileId");
+            if (selectedId) {
+                const stored = localStorage.getItem("profiles");
+                let profiles = [] as any[];
+                if (stored) {
+                    try { profiles = JSON.parse(stored); } catch { profiles = []; }
+                }
+
+                // find and update profile
+                let updated = false;
+                const newProfiles = profiles.map(p => {
+                    if (String(p.id) === String(selectedId)) {
+                        updated = true;
+                        // keep other profile fields but update mesInfos and name
+                        const newMesInfos = { ...(p.mesInfos || {}), ...data };
+                        return { ...p, mesInfos: newMesInfos, prenom: data.prenom || p.prenom, nom: data.nom || p.nom };
+                    }
+                    return p;
+                });
+
+                // if profile not found but there is a selectedId, optionally create one
+                if (!updated) {
+                    const newProfile = { id: selectedId, prenom: data.prenom, nom: data.nom, mesInfos: data, periodesStockees: JSON.parse(localStorage.getItem('periodesStockees') || '[]') };
+                    newProfiles.push(newProfile);
+                }
+
+                // persist and notify listeners
+                try {
+                    localStorage.setItem("profiles", JSON.stringify(newProfiles));
+                    window.dispatchEvent(new Event('profiles-changed'));
+                } catch (e) {
+                    console.warn("Impossible de sauvegarder profiles dans localStorage", e);
+                }
+            }
+        } catch (e) {
+            console.warn("Erreur lors de la synchronisation du profil", e);
+        }
     };
 
     // Périodes
