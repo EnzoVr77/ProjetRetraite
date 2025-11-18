@@ -11,6 +11,7 @@ interface Enfant {
     dateNaissance: string;
     adopte: boolean;
     ageAdoption?: number;
+    adoptionAnnee?: number;
 }
 
 interface Periode {
@@ -18,7 +19,6 @@ interface Periode {
     id: number;
     debut: string;
     fin: string;
-    trimestres: number;
     salaire: number;
     devise?: "EUR" | "FRF";
     valide?: boolean;
@@ -48,6 +48,8 @@ export default function MesInformations() {
         dateNaissance: "",
         adopte: false,
     });
+    const [adoptionAnneeError, setAdoptionAnneeError] = useState<string | null>(null);
+    const [adoptionAnneeText, setAdoptionAnneeText] = useState<string>("");
 
     // Carrière
     const [periodes, setPeriodes] = useState<Periode[]>([]);
@@ -66,7 +68,21 @@ export default function MesInformations() {
                     if (parsed.dateNaissance !== undefined) setDateNaissance(parsed.dateNaissance);
                     if (parsed.handicape !== undefined) setHandicape(parsed.handicape);
                     if (parsed.militaire !== undefined) setMilitaire(parsed.militaire);
-                    if (parsed.enfants !== undefined) setEnfants(parsed.enfants || []);
+                    if (parsed.enfants !== undefined) {
+                        const nowYear = new Date().getFullYear();
+                        const normalized = (parsed.enfants || []).map((en: any) => {
+                            let year: number | undefined = undefined;
+                            if (Array.isArray(en?.adoptionAnnee) && en.adoptionAnnee.length > 0) {
+                                const y = parseInt(en.adoptionAnnee[0]);
+                                if (!Number.isNaN(y) && /^\d{4}$/.test(String(y)) && y >= 1900 && y <= nowYear) year = y;
+                            } else if (en?.adoptionAnnee != null) {
+                                const y = parseInt(en.adoptionAnnee);
+                                if (!Number.isNaN(y) && /^\d{4}$/.test(String(y)) && y >= 1900 && y <= nowYear) year = y;
+                            }
+                            return { ...en, adoptionAnnee: year };
+                        });
+                        setEnfants(normalized);
+                    }
                 } catch (e) {
                     console.warn('Erreur en lisant mesInfos depuis localStorage', e);
                 }
@@ -166,7 +182,7 @@ export default function MesInformations() {
 
     const ajouterPeriode = () => {
         const newId = periodes.length === 0 ? 1 : Math.max(...periodes.map(p => p.id)) + 1;
-        setPeriodes([...periodes, { id: newId, debut: "", fin: "", trimestres: 0, salaire: 0, salaireEuro: 0 }]);
+        setPeriodes([...periodes, { id: newId, debut: "", fin: "", salaire: 0, salaireEuro: 0 } as Periode]);
     };
 
     const updatePeriode = (id: number, data: Partial<Periode>) => {
@@ -195,31 +211,12 @@ export default function MesInformations() {
                 : p
         );
 
-        // Vérifier chevauchement
-        const start = new Date(periode.debut).getTime();
-        const end = new Date(periode.fin).getTime();
-        const chevauche = updatedPeriodes.some(p => {
-            if (p.id === id || !p.debut || !p.fin) return false;
-            const pStart = new Date(p.debut).getTime();
-            const pEnd = new Date(p.fin).getTime();
-            return start <= pEnd && end >= pStart;
-        });
+        // Note: chevauchements autorisés — on ne bloque plus la validation pour chevauchement.
+        // Si nécessaire, on peut ajouter un avertissement plutôt qu'empêcher la sauvegarde.
 
-        if (chevauche) {
-            setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Cette période chevauche une autre période." }));
-            return;
-        }
-
-        // Vérification trimestres et salaire
-        let maxTrimestres = 0;
-        if (periode.debut && periode.fin) {
-            const months = (new Date(periode.fin).getFullYear() - new Date(periode.debut).getFullYear()) * 12
-                + (new Date(periode.fin).getMonth() - new Date(periode.debut).getMonth()) + 1;
-            maxTrimestres = Math.floor(months / 3);
-        }
-
-        if (periode.trimestres <= 0 || periode.trimestres > maxTrimestres || salaireEuro <= 0) {
-            setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Trimestres ou salaire incorrect" }));
+        // Vérification salaire uniquement (le champ "trimestres" n'est plus utilisé)
+        if (salaireEuro <= 0) {
+            setErreursPeriodes(prev => ({ ...prev, [id]: "❌ Salaire incorrect" }));
             return;
         }
 
@@ -236,12 +233,45 @@ export default function MesInformations() {
     // Enfants
     const ajouterEnfant = () => {
         if (!nouvelEnfant.prenom || !nouvelEnfant.nom || !nouvelEnfant.dateNaissance) return;
+
+        // If adopted, validate adoptionAnneeText before adding
+        if (nouvelEnfant.adopte) {
+            const { validYears, invalid } = (function parseYears(raw: string) {
+                const tokens = (raw || "").split(',').map(s => s.trim()).filter(s => s.length > 0);
+                const nowYear = new Date().getFullYear();
+                const validYears: number[] = [];
+                const invalid: string[] = [];
+                for (const t of tokens) {
+                    if (/^\d{4}$/.test(t)) {
+                        const y = parseInt(t, 10);
+                        if (y >= 1900 && y <= nowYear) validYears.push(y);
+                        else invalid.push(t);
+                    } else {
+                        invalid.push(t);
+                    }
+                }
+                return { validYears, invalid };
+            })(adoptionAnneeText);
+
+            if (invalid.length > 0) {
+                setAdoptionAnneeError('Années invalides: ' + invalid.join(', '));
+                return; // don't add until fixed
+            }
+
+            // attach first parsed year to the enfant object (single year)
+            nouvelEnfant.adoptionAnnee = validYears.length > 0 ? validYears[0] : undefined;
+        }
+
         setEnfants([...enfants, nouvelEnfant]);
         setNouvelEnfant({ prenom: "", nom: "", dateNaissance: "", adopte: false });
+        setAdoptionAnneeText("");
+        setAdoptionAnneeError(null);
     };
     const modifierEnfant = (index: number) => {
         const enfant = enfants[index];
         setNouvelEnfant(enfant);
+        // populate the text input for editing (single year)
+        setAdoptionAnneeText(enfant.adoptionAnnee ? String(enfant.adoptionAnnee) : '');
         setEnfants(enfants.filter((_, i) => i !== index));
     };
     const supprimerEnfant = (index: number) => {
@@ -404,7 +434,15 @@ export default function MesInformations() {
                                 <ul className="space-y-3">
                                     {enfants.map((e, i) => (
                                         <li key={i} className="bg-white p-4 rounded-xl shadow flex justify-between items-center">
-                                            <div>{e.prenom} {e.nom} <br /> {e.dateNaissance} {e.adopte && `(Adopté à ${e.ageAdoption} ans)`}</div>
+                                            <div>
+                                                {e.prenom} {e.nom} <br /> {e.dateNaissance}
+                                                {e.adopte && (
+                                                    <div className="text-sm text-gray-600">(Adopté à {e.ageAdoption ?? '—'} ans)</div>
+                                                )}
+                                                {e.adoptionAnnee != null && (
+                                                    <div className="text-sm text-gray-600">Année d'adoption: {e.adoptionAnnee}</div>
+                                                )}
+                                            </div>
                                             <div className="flex space-x-2">
                                                 <Pencil size={20} className="cursor-pointer text-purple-600" onClick={() => modifierEnfant(i)} />
                                                 <Trash2 size={20} className="cursor-pointer text-red-500" onClick={() => supprimerEnfant(i)} />
@@ -424,7 +462,35 @@ export default function MesInformations() {
                                         <div className="flex items-center space-x-2">
                                             <input type="checkbox" checked={nouvelEnfant.adopte} onChange={e => setNouvelEnfant({ ...nouvelEnfant, adopte: e.target.checked })} className="w-5 h-5 accent-purple-600" />
                                             {nouvelEnfant.adopte && (
-                                                <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e => setNouvelEnfant({ ...nouvelEnfant, ageAdoption: parseInt(e.target.value) || undefined })} className="p-2 border rounded-lg w-28" />
+                                                <>
+                                                    <input type="number" placeholder="Âge adoption" value={nouvelEnfant.ageAdoption || ""} onChange={e => setNouvelEnfant({ ...nouvelEnfant, ageAdoption: parseInt(e.target.value) || undefined })} className="p-2 border rounded-lg w-28 mr-2" />
+                                                    <div className="flex flex-col">
+                                                        <input type="number" placeholder="Année adoption (YYYY)" min={1900} max={new Date().getFullYear()} value={adoptionAnneeText} onChange={e => {
+                                                            setAdoptionAnneeText(e.target.value);
+                                                            setAdoptionAnneeError(null);
+                                                        }} onBlur={e => {
+                                                            const raw = e.target.value.trim();
+                                                            if (!raw) {
+                                                                setAdoptionAnneeError(null);
+                                                                setNouvelEnfant({ ...nouvelEnfant, adoptionAnnee: undefined });
+                                                                return;
+                                                            }
+                                                            if (/^\d{4}$/.test(raw)) {
+                                                                const y = parseInt(raw, 10);
+                                                                const nowYear = new Date().getFullYear();
+                                                                if (y >= 1900 && y <= nowYear) {
+                                                                    setAdoptionAnneeError(null);
+                                                                    setNouvelEnfant({ ...nouvelEnfant, adoptionAnnee: y });
+                                                                } else {
+                                                                    setAdoptionAnneeError('Année hors plage plausible');
+                                                                }
+                                                            } else {
+                                                                setAdoptionAnneeError('Format attendu: YYYY (ex: 2014)');
+                                                            }
+                                                        }} className="p-2 border rounded-lg" />
+                                                        {adoptionAnneeError && <div className="text-sm text-red-600 mt-1">{adoptionAnneeError}</div>}
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -456,21 +522,11 @@ export default function MesInformations() {
                             {/* -------------------- PÉRIODES -------------------- */}
                             <div className="space-y-4">
                                 {periodes.map(p => {
-                                    let maxTrimestres = 0;
-                                    if (p.debut && p.fin) {
-                                        const debut = new Date(p.debut);
-                                        const fin = new Date(p.fin);
-                                        if (fin >= debut) {
-                                            const months = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth()) + 1;
-                                            maxTrimestres = Math.floor(months / 3);
-                                        }
-                                    }
-
                                     const isDisabled = p.valide;
 
                                     return (
                                         <div key={p.id} className={`bg-white p-4 rounded-xl shadow space-y-3 ${isDisabled ? "bg-gray-100 opacity-70" : ""}`}>
-                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
 
                                                 {/* Date début */}
                                                 <label className="flex flex-col text-sm">
@@ -496,23 +552,11 @@ export default function MesInformations() {
                                                     />
                                                 </label>
 
-                                                {/* Trimestres */}
-                                                <label className={`flex flex-col text-sm ${isDisabled ? "text-gray-400" : ""}`}>
-                                                    <span className="text-xs text-gray-500">Trimestres (1 - {maxTrimestres})</span>
-                                                    <input
-                                                        type="number"
-                                                        min={1}
-                                                        max={maxTrimestres}
-                                                        value={p.trimestres}
-                                                        onChange={e => updatePeriode(p.id, { trimestres: parseInt(e.target.value)})}
-                                                        className={`p-2 border rounded-lg text-center ${p.trimestres <= 0 || p.trimestres > maxTrimestres ? "border-red-500" : ""}`}
-                                                        disabled={isDisabled}
-                                                    />
-                                                </label>
+                                                {/* (Champ "trimestres" retiré) */}
 
                                                 {/* Salaire */}
                                                 <label className={`flex flex-col text-sm ${isDisabled ? "text-gray-400" : ""}`}>
-                                                    <span className="text-xs text-gray-500">SAM de la période</span>
+                                                    <span className="text-xs text-gray-500">Salaire de la période</span>
                                                     <input
                                                         type="number"
                                                         min={0}
